@@ -1,0 +1,39 @@
+version: "3.9"
+
+networks:
+  crypto_net:
+    name: crypto_net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.10.0/22
+
+services:
+  amm_service:
+    image: amm
+    build:
+      context: ./amm
+      dockerfile: ./Dockerfile
+    # environment:
+    # - PYTHONUNBUFFERED=1
+    # ports:
+    #   - "80:80"
+    networks:
+      crypto_net:
+        ipv4_address: 192.168.10.1
+  
+  node_01:
+    container_name: "node_01"
+    image: node
+    build: 
+      context: ./node/
+      dockerfile: Dockerfile
+    depends_on:
+      - "amm_service"
+    # ports:
+    #   - "8802:80"
+    networks:
+      crypto_net:
+        ipv4_address: 192.168.10.2
+    cpus: 1.0
+    mem_limit: 1024MB
