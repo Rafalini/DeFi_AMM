@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Real-Time Value Chart</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='main.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css">
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <canvas id="canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <canvas id="canvas2"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.1/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
+<script>
+    $(document).ready(function () {
+        const config = {
+            type: 'line',
+            data: {
+                labels: Array(250).fill("00:00:00"),
+                datasets: [
+                {
+                    label: "BTC",
+                    backgroundColor: 'rgb(255, 0, 85)',
+                    borderColor: 'rgb(255, 0, 85)',
+                    data: Array(250).fill(null),
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 0
+                },
+                {
+                    label: "ETH",
+                    backgroundColor: 'rgb(0, 0, 255)',
+                    borderColor: 'rgb(0, 0, 255)',
+                    data: Array(250).fill(null),
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 0
+                }
+                ],
+            },
+            options: {
+                responsive: true,
+                title: {
+                    display: true,
+                    text: 'Value Real-Time chart'
+                },
+                tooltips: {enabled: false},
+                hover: {mode: null},
+                scales: {
+                    xAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Time'
+                        }
+                    }],
+                    yAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Value'
+                        }
+                    }]
+                }
+            }
+        };
+
+        const context = document.getElementById('canvas').getContext('2d');
+
+        const lineChart = new Chart(context, config);
+
+        const source = new EventSource("/chart-data");
+
+        source.onmessage = function (event) {
+            console.log(event)
+            const data = JSON.parse(event.data);
+            console.log(data)
+            if (config.data.labels.length === 250) {
+                config.data.labels.shift();
+                config.data.datasets[0].data.shift();
+                config.data.datasets[1].data.shift();
+            }
+            config.data.labels.push(data.time);
+            config.data.datasets[0].data.push(data.BTC);
+            config.data.datasets[1].data.push(data.ETH);
+            lineChart.update();
+        }
+
+        // const context2 = document.getElementById('canvas2').getContext('2d');
+
+        // const lineChart2 = new Chart(context2, config);
+
+        // const source2 = new EventSource("/chart-data");
+
+        // source2.onmessage = function (event) {
+        //     const data = JSON.parse(event.data);
+        //     if (config.data.labels.length === 250) {
+        //         config.data.labels.shift();
+        //         config.data.datasets[0].data.shift();
+        //     }
+        //     config.data.labels.push(data.time);
+        //     config.data.datasets[0].data.push(data.value);
+            // lineChart2.update();
+        // }
+    });
+</script>
+</body>
+</html>

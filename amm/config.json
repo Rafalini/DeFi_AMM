@@ -1,0 +1,16 @@
+{
+    "goods" : [
+        {
+             "name": "bitcoin",
+             "short": "BTC",
+             "amount": 1000,
+             "minimal_part": 0.001
+        },
+        {
+            "name": "etherium",
+            "short": "ETH",
+            "amount": 1000,
+            "minimal_part": 0.001
+       }
+    ]
+}
