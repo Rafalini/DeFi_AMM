@@ -1,5 +1,5 @@
 {
-    "goods" : [
+    "currencies" : [
         {
              "name": "bitcoin",
              "short": "BTC",

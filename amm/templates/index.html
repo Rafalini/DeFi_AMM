@@ -45,7 +45,7 @@
                     borderColor: 'rgb(255, 0, 85)',
                     data: Array(250).fill(null),
                     fill: false,
-                    tension: 0.3,
+                    tension: 0.1,
                     pointRadius: 0
                 },
                 {
@@ -54,7 +54,7 @@
                     borderColor: 'rgb(0, 0, 255)',
                     data: Array(250).fill(null),
                     fill: false,
-                    tension: 0.3,
+                    tension: 0.1,
                     pointRadius: 0
                 }
                 ],
@@ -86,9 +86,63 @@
             }
         };
 
+        const config2 = {
+            type: 'line',
+            data: {
+                labels: Array(250).fill("00:00:00"),
+                datasets: [
+                // {
+                //     label: "BTC - BTC",
+                //     backgroundColor: 'rgb(255, 0, 85)',
+                //     borderColor: 'rgb(255, 0, 85)',
+                //     data: Array(250).fill(null),
+                //     fill: false,
+                //     tension: 0.1,
+                //     pointRadius: 0
+                // },
+                {
+                    label: "BTC - ETH",
+                    backgroundColor: 'rgb(0, 0, 255)',
+                    borderColor: 'rgb(0, 0, 255)',
+                    data: Array(250).fill(null),
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 0
+                }
+                ],
+            },
+            options: {
+                responsive: true,
+                title: {
+                    display: true,
+                    text: 'Value Real-Time price chart'
+                },
+                tooltips: {enabled: false},
+                hover: {mode: null},
+                scales: {
+                    xAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Time'
+                        }
+                    }],
+                    yAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Value'
+                        }
+                    }]
+                }
+            }
+        };
+
+        const context2 = document.getElementById('canvas2').getContext('2d');
         const context = document.getElementById('canvas').getContext('2d');
 
         const lineChart = new Chart(context, config);
+        const lineChart2 = new Chart(context2, config2);
 
         const source = new EventSource("/chart-data");
 
@@ -100,29 +154,21 @@
                 config.data.labels.shift();
                 config.data.datasets[0].data.shift();
                 config.data.datasets[1].data.shift();
+
+                config2.data.labels.shift();
+                config2.data.datasets[0].data.shift();
+                // config2.data.datasets[1].data.shift();
             }
             config.data.labels.push(data.time);
-            config.data.datasets[0].data.push(data.BTC);
-            config.data.datasets[1].data.push(data.ETH);
+            config.data.datasets[0].data.push(data.amounts.BTC);
+            config.data.datasets[1].data.push(data.amounts.ETH);
+
+            config2.data.labels.push(data.time);
+            config2.data.datasets[0].data.push(data.rates.ETH);
+            // config2.data.datasets[1].data.push(data.rates.BTC);
             lineChart.update();
+            lineChart2.update();
         }
-
-        // const context2 = document.getElementById('canvas2').getContext('2d');
-
-        // const lineChart2 = new Chart(context2, config);
-
-        // const source2 = new EventSource("/chart-data");
-
-        // source2.onmessage = function (event) {
-        //     const data = JSON.parse(event.data);
-        //     if (config.data.labels.length === 250) {
-        //         config.data.labels.shift();
-        //         config.data.datasets[0].data.shift();
-        //     }
-        //     config.data.labels.push(data.time);
-        //     config.data.datasets[0].data.push(data.value);
-            // lineChart2.update();
-        // }
     });
 </script>
 </body>
