@@ -1,29 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Real-Time Value Chart</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='main.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.1/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css">
-</head>
-<body>
-<div class="container">
+{% extends "layout.html" %}
+{% block content %}
+<div>
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-body">
-                    <canvas id="canvas"></canvas>
-                </div>
+                <canvas id="canvas"></canvas>
             </div>
         </div>
     </div>
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-body">
-                    <canvas id="canvas2"></canvas>
-                </div>
+                <canvas id="canvas2"></canvas>
             </div>
         </div>
     </div>
@@ -39,24 +27,24 @@
             data: {
                 labels: Array(250).fill("00:00:00"),
                 datasets: [
-                {
-                    label: "BTC",
-                    backgroundColor: 'rgb(255, 0, 85)',
-                    borderColor: 'rgb(255, 0, 85)',
-                    data: Array(250).fill(null),
-                    fill: false,
-                    tension: 0.1,
-                    pointRadius: 0
-                },
-                {
-                    label: "ETH",
-                    backgroundColor: 'rgb(0, 0, 255)',
-                    borderColor: 'rgb(0, 0, 255)',
-                    data: Array(250).fill(null),
-                    fill: false,
-                    tension: 0.1,
-                    pointRadius: 0
-                }
+                    {
+                        label: "BTC",
+                        backgroundColor: 'rgb(255, 0, 85)',
+                        borderColor: 'rgb(255, 0, 85)',
+                        data: Array(250).fill(null),
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0
+                    },
+                    {
+                        label: "ETH",
+                        backgroundColor: 'rgb(0, 0, 255)',
+                        borderColor: 'rgb(0, 0, 255)',
+                        data: Array(250).fill(null),
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0
+                    }
                 ],
             },
             options: {
@@ -65,8 +53,8 @@
                     display: true,
                     text: 'Value Real-Time chart'
                 },
-                tooltips: {enabled: false},
-                hover: {mode: null},
+                tooltips: { enabled: false },
+                hover: { mode: null },
                 scales: {
                     xAxes: [{
                         display: true,
@@ -91,24 +79,24 @@
             data: {
                 labels: Array(250).fill("00:00:00"),
                 datasets: [
-                // {
-                //     label: "BTC - BTC",
-                //     backgroundColor: 'rgb(255, 0, 85)',
-                //     borderColor: 'rgb(255, 0, 85)',
-                //     data: Array(250).fill(null),
-                //     fill: false,
-                //     tension: 0.1,
-                //     pointRadius: 0
-                // },
-                {
-                    label: "BTC - ETH",
-                    backgroundColor: 'rgb(0, 0, 255)',
-                    borderColor: 'rgb(0, 0, 255)',
-                    data: Array(250).fill(null),
-                    fill: false,
-                    tension: 0.1,
-                    pointRadius: 0
-                }
+                    // {
+                    //     label: "BTC - BTC",
+                    //     backgroundColor: 'rgb(255, 0, 85)',
+                    //     borderColor: 'rgb(255, 0, 85)',
+                    //     data: Array(250).fill(null),
+                    //     fill: false,
+                    //     tension: 0.1,
+                    //     pointRadius: 0
+                    // },
+                    {
+                        label: "BTC - ETH",
+                        backgroundColor: 'rgb(0, 0, 255)',
+                        borderColor: 'rgb(0, 0, 255)',
+                        data: Array(250).fill(null),
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0
+                    }
                 ],
             },
             options: {
@@ -117,8 +105,8 @@
                     display: true,
                     text: 'Value Real-Time price chart'
                 },
-                tooltips: {enabled: false},
-                hover: {mode: null},
+                tooltips: { enabled: false },
+                hover: { mode: null },
                 scales: {
                     xAxes: [{
                         display: true,
@@ -147,9 +135,8 @@
         const source = new EventSource("/chart-data");
 
         source.onmessage = function (event) {
-            console.log(event)
             const data = JSON.parse(event.data);
-            console.log(data)
+            // console.log(data)
             if (config.data.labels.length === 250) {
                 config.data.labels.shift();
                 config.data.datasets[0].data.shift();
@@ -169,7 +156,10 @@
             lineChart.update();
             lineChart2.update();
         }
+
+        let logWindow = document.getElementById('log-window');
+        logWindow.innerHTML += data.transactions;
     });
+
 </script>
-</body>
-</html>
+{% endblock content %}

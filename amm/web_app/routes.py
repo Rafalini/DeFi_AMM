@@ -1,12 +1,13 @@
-from web_app import app, currencies, const_product_k, const_sum_k, logger
+from web_app import app, currencies, const_product_k, const_sum_k, logger, transactions, transactionCacheLimit
 from flask import Response, request, render_template, stream_with_context
 
 import math, json, time
 
 from datetime import datetime
 
-@app.route("/", methods=['GET'])
-def index():
+@app.route("/")
+@app.route("/home")
+def home():
     return render_template("index.html")
 
 
@@ -28,6 +29,7 @@ def getCurrentAmounts():
 
             data["amounts"] = amounts
             data["rates"] = rates
+            data["transactions"] = transactions
 
             yield f"data:{json.dumps(data)}\n\n"
             time.sleep(0.4)
@@ -80,6 +82,11 @@ def transaction() -> Response:
         currencies[request.json["from"]]["amount"] += request.json["amount"]
         currencies[request.json["to"]]["amount"] -= requested
 
+        # transactions = addTransaction(transactions, str(request.remote_addr)+" traded "+request.json["to"]["amount"] +" "+request.json["to"], transactionCacheLimit)
+        transactions.append(str(request.remote_addr)+" traded "+str(round(requested,3)) +" "+str(request.json["to"]))
+        if len(transactions) == transactionCacheLimit:
+            transactions.pop(0)
+
         return Response ({"message":"ok", "recieved" : requested, "currency": request.json["to"]}, status=200, mimetype='application/json')
     else: 
         return Response ({"message":"no sufficient credits in pool"}, status=500, mimetype='application/json')
@@ -106,7 +113,3 @@ def getRates() -> Response:
                 rates[referenceCurrency] = currencies[referenceCurrency]["amount"] / currencies[currency]["amount"]
         response[currency] = rates
     return response
-
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=os.getenv("FLASK_SERVER_PORT"), debug=True)
