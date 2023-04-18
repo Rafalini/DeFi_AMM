@@ -1,31 +1,9 @@
-#!/usr/bin/env python
-import os
-import json
-import logging
-import random
-import sys
-import time
-import math
+from web_app import app, currencies, const_product_k, const_sum_k, logger
+from flask import Response, request, render_template, stream_with_context
+
+import math, json, time
+
 from datetime import datetime
-
-from flask import Flask, Response, render_template, request, stream_with_context
-  
-logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-logger = logging.getLogger(__name__)
-app = Flask(__name__)
-
-config_file = open('config.json')
-config = json.load(config_file)
-currencies = {}
-const_product_k = 1
-const_sum_k = 0
-
-for entry in config["currencies"]:
-    currencies[entry["short"]] = {"amount":entry["amount"], "minimal_part": entry["minimal_part"]}
-    const_product_k *= entry["amount"]
-    const_sum_k += entry["amount"]
-
-
 
 @app.route("/", methods=['GET'])
 def index():
