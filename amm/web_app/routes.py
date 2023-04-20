@@ -10,6 +10,12 @@ from datetime import datetime
 def home():
     return render_template("index.html")
 
+@app.route("/get-currencies")
+def getCurrencies():
+    response = []
+    for entry in currencies:
+        response.append(entry)
+    return Response(json.dumps(response), status=200, mimetype='application/json')
 
 def getCurrentAmounts():
     client_ip = request.remote_addr
@@ -82,9 +88,9 @@ def transaction() -> Response:
         currencies[request.json["to"]]["amount"] -= requested
 
         # transactions = addTransaction(transactions, str(request.remote_addr)+" traded "+request.json["to"]["amount"] +" "+request.json["to"], transactionCacheLimit)
-        transactions.append(str(request.remote_addr)+" traded "+str(round(requested,3)) +" "+str(request.json["to"]))
+        transactions.insert(0, str(request.remote_addr)+" traded "+str(round(requested,3)) +" "+str(request.json["to"]))
         if len(transactions) == transactionCacheLimit:
-            transactions.pop(0)
+            transactions.pop(len(transactions)-1)
 
         return Response ({"message":"ok", "recieved" : requested, "currency": request.json["to"]}, status=200, mimetype='application/json')
     else: 
@@ -109,7 +115,7 @@ def getRates() -> Response:
     for currency in currencies:
         rates = {}
         for referenceCurrency in currencies:
-            if referenceCurrency != currency:
-                rates[referenceCurrency] = currencies[referenceCurrency]["amount"] / currencies[currency]["amount"]
+            # if referenceCurrency != currency:
+            rates[referenceCurrency] = currencies[referenceCurrency]["amount"] / currencies[currency]["amount"]
         response[currency] = rates
     return response
