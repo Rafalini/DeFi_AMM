@@ -36,7 +36,6 @@ def getCurrentAmounts():
     except GeneratorExit:
         logger.info("Client %s disconnected", client_ip)
 
-
 @app.route("/chart-data", methods=['GET'])
 def chartData() -> Response:
     response = Response(stream_with_context(getCurrentAmounts()), mimetype="text/event-stream")
@@ -106,6 +105,7 @@ def getRates() -> Response:
         } 
     """
     response = {}
+    response["time"] = datetime.now().strftime("%H:%M:%S")
     for currency in currencies:
         rates = {}
         for referenceCurrency in currencies:
