@@ -13,7 +13,7 @@ config_file = open('web_app/config.json')
 config = json.load(config_file)
 currencies = {}
 transactions = []
-transactionCacheLimit = 10
+transactionCacheLimit = 8
 const_product_k = 1
 const_sum_k = 0
 

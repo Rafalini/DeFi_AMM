@@ -3,7 +3,7 @@
         {
              "name": "bitcoin",
              "short": "BTC",
-             "amount": 1000,
+             "amount": 30000,
              "minimal_part": 0.001
         },
         {

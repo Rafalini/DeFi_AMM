@@ -1,19 +1,37 @@
 {% extends "layout.html" %}
 {% block content %}
-<div>
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <canvas id="canvas"></canvas>
+<div class = container-column>
+    <div class="main-column"></div>
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <canvas id="canvas"></canvas>
+                </div>
             </div>
         </div>
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <canvas id="canvas2"></canvas>
+                </div>
+            </div>
+        </div>
+        <textarea id="log-window" rows="10" cols="84"></textarea>
     </div>
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <canvas id="canvas2"></canvas>
-            </div>
-        </div>
+    <div class="log-column">
+        <!-- <table id="myTable">
+            <thead>
+            <tr>
+                <th>My Header</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>initial row</td>
+            </tr>
+            </tbody>
+        </table> -->
+        <!-- <textarea id="log-window" rows="10" cols="15"></textarea> -->
     </div>
 </div>
 
@@ -155,10 +173,10 @@
             // config2.data.datasets[1].data.push(data.rates.BTC);
             lineChart.update();
             lineChart2.update();
-        }
 
-        let logWindow = document.getElementById('log-window');
-        logWindow.innerHTML += data.transactions;
+            let logWindow = document.getElementById('log-window');
+            logWindow.innerHTML = data.transactions + '\n';
+        }
     });
 
 </script>

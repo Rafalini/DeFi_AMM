@@ -88,7 +88,7 @@ def transaction() -> Response:
         currencies[request.json["to"]]["amount"] -= requested
 
         # transactions = addTransaction(transactions, str(request.remote_addr)+" traded "+request.json["to"]["amount"] +" "+request.json["to"], transactionCacheLimit)
-        transactions.insert(0, str(request.remote_addr)+" traded "+str(round(requested,3)) +" "+str(request.json["to"]))
+        transactions.insert(0, str(request.remote_addr)+" traded "+str(round(requested,3)) +" "+str(request.json["to"])+"\n")
         if len(transactions) == transactionCacheLimit:
             transactions.pop(len(transactions)-1)
 
