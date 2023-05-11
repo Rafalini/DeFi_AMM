@@ -30,7 +30,7 @@ services:
       dockerfile: ./Dockerfile
     environment:
     - PYTHONUNBUFFERED=1
-    - FLASK_SERVER_PORT=8000
+    - FLASK_ORACLE_PORT=8000
     ports:
       - "8001:8000"
     networks:

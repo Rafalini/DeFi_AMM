@@ -3,7 +3,6 @@ import time
 import json
 import re
 import random
-import numpy as np
 import threading
 from flask import Response
 from datetime import datetime
@@ -49,12 +48,14 @@ balancerQueryBody = """
 def getEthPrice():
   url1 = 'https://api.coingecko.com/api/v3/simple/price'
   url2 = 'https://api.binance.com/api/v3/ticker/price'
+  url3 = 'https://api.binance.com/api/v3/avgPrice'
 
   params1 = {'ids': 'weth', 'vs_currencies': 'usd'}
   params2 = {'symbol': 'ETHUSDT'}
 
   response1 = requests.get(url1, params=params1)
   response2 = requests.get(url2, params=params2)
+  response3 = requests.get(url3, params=params2)
   weth_price = 0
 
   if response1.status_code == 200:
@@ -64,8 +65,12 @@ def getEthPrice():
   if response1.status_code == 200:
       data = response2.json()
       weth_price += float(data['price'])
+
+  if response3.status_code == 200:
+    data = response3.json()
+    weth_price += float(data['price'])
   
-  return weth_price / 2
+  return weth_price / 3
 
 
 uniswapHistory = {}
@@ -160,6 +165,7 @@ def getCurrencies():
           response.append({"symbol" : entry, "price" : uniformHistory[entry][index]["price"], "updated": uniformHistory[entry][index]["dateTime"]})
     return Response(json.dumps(response), status=200, mimetype='application/json')
 
+@app.route("/")
 @app.route("/get-symbols")
 def getSymbols():
     response = []
