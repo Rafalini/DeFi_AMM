@@ -136,7 +136,7 @@ def addBalancerHistoryEntry(data):
         valueEntry["poolLiquidity"] = entry["poolLiquidity"]
 
         uniformEntry["dateTime"] = datetime.now().strftime("%H:%M:%S")
-        uniformEntry["price"] = entry["price"]
+        uniformEntry["price"] = float(entry["price"])
 
         balancerHistory[entry["symbol"]].append(valueEntry)
         uniformHistory[entry["symbol"]].append(uniformEntry)
@@ -162,8 +162,9 @@ def getCurrencies():
     for entry in uniformHistory:
         if len(uniformHistory[entry]) > 0:
           index = len(uniformHistory[entry]) - 1
-          response.append({"symbol" : entry, "price" : uniformHistory[entry][index]["price"], "updated": uniformHistory[entry][index]["dateTime"]})
-    return Response(json.dumps(response), status=200, mimetype='application/json')
+          response.append({"symbol" : entry, "price" : round(uniformHistory[entry][index]["price"],4), "updated": uniformHistory[entry][index]["dateTime"]})
+    resp = sorted(response, key=lambda d: d['price'])
+    return Response(json.dumps(resp), status=200, mimetype='application/json')
 
 @app.route("/")
 @app.route("/get-symbols")

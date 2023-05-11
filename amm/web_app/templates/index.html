@@ -19,25 +19,20 @@
         <textarea id="log-window" rows="10" cols="84"></textarea>
     </div>
     <div class="log-column">
-        <!-- <table id="myTable">
-            <thead>
-            <tr>
-                <th>My Header</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-                <td>initial row</td>
-            </tr>
-            </tbody>
-        </table> -->
-        <!-- <textarea id="log-window" rows="10" cols="15"></textarea> -->
     </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.1/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
+<script>
+    function randomColor() {
+            var r = Math.floor(Math.random() * 255);
+            var g = Math.floor(Math.random() * 255);
+            var b = Math.floor(Math.random() * 255);
+            return "rgb(" + r + "," + g + "," + b + ")";
+         };
+</script>
 <script>
     $(document).ready(function () {
         const config = {
@@ -99,25 +94,20 @@
                 datasets: [
                     // {
                     //     label: "BTC - BTC",
-                    //     backgroundColor: 'rgb(255, 0, 85)',
-                    //     borderColor: 'rgb(255, 0, 85)',
                     //     data: Array(250).fill(null),
+                    //     borderColor: randomColor(),
+                    //     backgroundColor: 'rgb(255, 0, 85)',
                     //     fill: false,
                     //     tension: 0.1,
-                    //     pointRadius: 0
-                    // },
-                    {
-                        label: "BTC - ETH",
-                        backgroundColor: 'rgb(0, 0, 255)',
-                        borderColor: 'rgb(0, 0, 255)',
-                        data: Array(250).fill(null),
-                        fill: false,
-                        tension: 0.1,
-                        pointRadius: 0
-                    }
+                    //     pointRadius: 0,
+                    //     hidden: false
+                    // }
                 ],
             },
             options: {
+                legend: {
+                    display: true
+                },
                 responsive: true,
                 title: {
                     display: true,
@@ -155,21 +145,46 @@
         source.onmessage = function (event) {
             const data = JSON.parse(event.data);
             // console.log(data)
+
+            data.prices.forEach((currency, index, arr) => {
+                const datasetIndex = config2.data.datasets.findIndex(object => object.label === currency.symbol);
+                if (datasetIndex === -1) {
+                    // 273
+                    config2.data.datasets.push(
+                        {
+                            label: currency.symbol,
+                            data: Array(250).fill(null),
+                            borderColor: randomColor(),
+                            backgroundColor: 'rgb(255, 0, 85)',
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            hidden: false
+                        }
+                    );
+                } else {
+                    config2.data.datasets[datasetIndex].data.push(currency.price)
+                }
+                if (index > 10){
+                    arr.length = index + 1;
+                }
+            })
+
             if (config.data.labels.length === 250) {
                 config.data.labels.shift();
                 config.data.datasets[0].data.shift();
                 config.data.datasets[1].data.shift();
 
                 config2.data.labels.shift();
-                config2.data.datasets[0].data.shift();
-                // config2.data.datasets[1].data.shift();
+                config2.data.datasets.forEach(dataset => {dataset.data.shift();})
             }
+
             config.data.labels.push(data.time);
             config.data.datasets[0].data.push(data.amounts.BTC);
             config.data.datasets[1].data.push(data.amounts.ETH);
 
             config2.data.labels.push(data.time);
-            config2.data.datasets[0].data.push(data.rates.ETH);
+            // config2.data.datasets[0].data.push(data.rates.ETH);
             // config2.data.datasets[1].data.push(data.rates.BTC);
             lineChart.update();
             lineChart2.update();

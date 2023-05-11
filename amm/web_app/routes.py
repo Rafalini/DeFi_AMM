@@ -1,7 +1,7 @@
 from web_app import app, currencies, const_product_k, const_sum_k, logger, transactions, transactionCacheLimit
 from flask import Response, request, render_template, stream_with_context
 
-import math, json, time
+import math, json, time, requests
 
 from datetime import datetime
 
@@ -33,6 +33,10 @@ def getCurrentAmounts():
                 if currency != "BTC":
                     rates[currency] = currencies[currency]["amount"] / currencies["BTC"]["amount"]
 
+            response = requests.get('http://192.168.10.2:8000/get-values')
+            # sortedResponse = response.json().sort(key=lambda x: float(x["price"]))
+
+            data["prices"] = response.json()
             data["amounts"] = amounts
             data["rates"] = rates
             data["transactions"] = transactions
