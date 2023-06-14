@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block content %}
-<div class = container-column>
-    <div class="main-column"></div>
+<div class="content-container">
+    <div class="charts-column">
         <div class="row">
             <div class="col-12">
                 <div class="card">
@@ -16,11 +16,58 @@
                 </div>
             </div>
         </div>
-        <textarea id="log-window" rows="10" cols="84"></textarea>
+<!--        <textarea id="log-window" rows="7" cols="30"></textarea>-->
     </div>
-    <div class="log-column">
+
+    <div class="oracle-container">
+        <div class="oracle-table">
+            <div class="oracle-table-header-container">
+                <div class="oracle-table-header">
+                    <div data-bn-type="text" class="bigger-text">Kolekcje</div>
+                    <div data-bn-type="text" class="bigger-text">Wolumen</div>
+                    <div data-bn-type="text" class="bigger-text">Cena Minimalna</div>
+                </div>
+            </div>
+            <div class="oracle-table-content-container">
+                {% for changeEntry in changes %}
+                <div class="oracle-table-row">
+                    <div class="oracle-table-cell-container">
+                        <div class="oracle-table-row-cell">
+<!--                            <div class="medium-text">Rekt Dogs</div>-->
+                            <div class="medium-text">{{ changeEntry.currency }}</div>
+                        </div>
+                    </div>
+                    <div class="oracle-table-cell-container">
+                        <div class="oracle-table-row-cell-percentage">
+<!--                            <div class="medium-text">116.86 ETH</div>-->
+                            <div class="medium-text">{{ changeEntry.volumen }}</div>
+                            {% if changeEntry.volumenChange >= 0 %}
+                                <div class="green-percentage">+{{ changeEntry.volumenChange }}%</div>
+                            {% else %}
+                                <div class="red-percentage">{{ changeEntry.volumenChange }}%</div>
+                            {% endif %}
+                            <!--                            <div class="green-percentage">+18.51%</div>-->
+                        </div>
+                    </div>
+                    <div class="oracle-table-cell-container">
+                        <div class="oracle-table-row-cell-percentage">
+<!--                            <div class="medium-text">18.3K ETH</div>-->
+                            <div class="medium-text">{{ changeEntry.futurePrice }}</div>
+                            {% if changeEntry.change >= 0 %}
+                                <div class="green-percentage">+{{ changeEntry.change }}%</div>
+                            {% else %}
+                                <div class="red-percentage">{{ changeEntry.change }}%</div>
+                            {% endif %}
+<!--                            <div class="green-percentage">+348.99%</div>-->
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 </div>
+
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.1/js/bootstrap.bundle.min.js"></script>
@@ -91,18 +138,7 @@
             type: 'line',
             data: {
                 labels: Array(250).fill("00:00:00"),
-                datasets: [
-                    // {
-                    //     label: "BTC - BTC",
-                    //     data: Array(250).fill(null),
-                    //     borderColor: randomColor(),
-                    //     backgroundColor: 'rgb(255, 0, 85)',
-                    //     fill: false,
-                    //     tension: 0.1,
-                    //     pointRadius: 0,
-                    //     hidden: false
-                    // }
-                ],
+                datasets: [],
             },
             options: {
                 legend: {
@@ -189,10 +225,38 @@
             lineChart.update();
             lineChart2.update();
 
-            let logWindow = document.getElementById('log-window');
-            logWindow.innerHTML = data.transactions + '\n';
+            //let logWindow = document.getElementById('log-window');
+            //logWindow.innerHTML = data.transactions + '\n';
         }
     });
-
 </script>
+<!--<script>-->
+<!--    const source = new EventSource("/changes-data");-->
+<!--    source.onmessage = function (event) {-->
+<!--            const data = JSON.parse(event.data);-->
+<!--            // console.log(data)-->
+
+<!--            data.prices.forEach((currency, index, arr) => {-->
+<!--                const datasetIndex = config2.data.datasets.findIndex(object => object.label === currency.symbol);-->
+<!--                if (datasetIndex === -1) {-->
+
+
+<!--                } else {-->
+<!--                    config2.data.datasets[datasetIndex].data.push(currency.price)-->
+<!--                }-->
+<!--                if (index > 10){-->
+<!--                    arr.length = index + 1;-->
+<!--                }-->
+<!--            })-->
+
+<!--            if (config.data.labels.length === 250) {-->
+<!--                config.data.labels.shift();-->
+<!--                config.data.datasets[0].data.shift();-->
+<!--                config.data.datasets[1].data.shift();-->
+
+<!--                config2.data.labels.shift();-->
+<!--                config2.data.datasets.forEach(dataset => {dataset.data.shift();})-->
+<!--            }-->
+<!--        }-->
+<!--</script>-->
 {% endblock content %}

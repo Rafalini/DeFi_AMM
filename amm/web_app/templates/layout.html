@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Real-Time Value Chart</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='header.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='body.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='main.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css">
@@ -12,7 +14,7 @@
 <body>
     <header class="site-header">
         <nav class="navbar navbar-expand-md navbar-dark bg-steel fixed-top">
-            <div class="container">
+            <div class="header-container">
                 <a class="navbar-brand mr-4" href="/">Real time crypto data viewer</a>
                 <input class="form-control form-control-dark w-100" type="text" placeholder="Search"
                     aria-label="Search">
@@ -26,7 +28,7 @@
     </header>
     <main role="main" class="main-container">
         <div class="menu-column">
-            <ul class="nav">
+            <ul class="nav min-width">
                 <li class="nav-item">
                     <a class="nav-link active" href="#">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -49,28 +51,18 @@
                         Orders
                     </a>
                 </li>
-                <!-- <li class="nav-item">
+                <li class="nav-item">
                     <a class="nav-link" href="#">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="feather feather-shopping-cart">
-                            <circle cx="9" cy="21" r="1"></circle>
-                            <circle cx="20" cy="21" r="1"></circle>
-                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                            class="feather feather-bar-chart-2">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
                         </svg>
-                        Products
+                        Reports
                     </a>
-                </li> -->
-                <a class="nav-link" href="#">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        class="feather feather-bar-chart-2">
-                        <line x1="18" y1="20" x2="18" y2="10"></line>
-                        <line x1="12" y1="20" x2="12" y2="4"></line>
-                        <line x1="6" y1="20" x2="6" y2="14"></line>
-                    </svg>
-                    Reports
-                </a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -97,20 +89,26 @@
                         Current month
                     </a>
                 </li>
+                                <!-- <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="feather feather-shopping-cart">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                        Products
+                    </a>
+                </li> -->
             </ul>
         </div>
 
-        <div class="content-column">
+        <div class="content-block">
             {% block content %}{% endblock %}
         </div>
-
-        <!-- <div class="transactions-column">
-            <textarea id="log-window" rows="10" cols="15"></textarea>
-        </div> -->
     </main>
 
-    <!-- Optional JavaScript -->
-    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
         integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
         crossorigin="anonymous"></script>

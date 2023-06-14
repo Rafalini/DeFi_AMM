@@ -8,7 +8,8 @@ from datetime import datetime
 @app.route("/")
 @app.route("/home")
 def home():
-    return render_template("index.html")
+    response = requests.get('http://192.168.10.2:8000/get-predictions')
+    return render_template("index.html", changes=response.json())
 
 @app.route("/get-currencies")
 def getCurrencies():
@@ -92,7 +93,8 @@ def transaction() -> Response:
         currencies[request.json["to"]]["amount"] -= requested
 
         # transactions = addTransaction(transactions, str(request.remote_addr)+" traded "+request.json["to"]["amount"] +" "+request.json["to"], transactionCacheLimit)
-        transactions.insert(0, str(request.remote_addr)+" traded "+str(round(requested,3)) +" "+str(request.json["to"])+"\n")
+        transactions.insert(0, {"peer": str(request.remote_addr), "from": request.json["from"], "to": request.json["to"], "amountFrom": request.json["amount"], "amountTo": round(requested,3)})
+        # transactions.insert(0, str(request.remote_addr)+" traded "+str(round(requested,3)) +" "+str(request.json["to"])+"\n")
         if len(transactions) == transactionCacheLimit:
             transactions.pop(len(transactions)-1)
 
