@@ -18,7 +18,7 @@ const_product_k = 1
 const_sum_k = 0
 
 for entry in config["currencies"]:
-    currencies[entry["short"]] = {"amount":entry["amount"], "minimal_part": entry["minimal_part"]}
+    currencies[entry["short"]] = {"amount":entry["amount"], "minimal_part": entry["minimal_part"], "volume": 0}
     const_product_k *= entry["amount"]
     const_sum_k += entry["amount"]
 

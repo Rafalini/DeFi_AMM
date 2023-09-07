@@ -1,13 +1,25 @@
 import requests
 import time
 import json
-import re
-import random
+import os
 import threading
 from flask import Response
 from datetime import datetime
 from web_app import app
 from bs4 import BeautifulSoup
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dropout, Dense, Activation
+
+checkpoint_path = "web_app/model_weights/cp.ckpt"
+checkpoint_dir = os.path.dirname(checkpoint_path)
+
+model = Sequential()
+model.add(LSTM(50, return_sequences = True, input_shape=(50, 1)))
+model.add(LSTM(64, return_sequences = False))
+model.add(Dense(1, activation='linear'))
+model.compile(loss='mse', optimizer='rmsprop')
+model.load_weights(checkpoint_path)
 
 ammUrl = "http://192.168.10.1:8000"
 uniswapApiURL = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
@@ -149,7 +161,7 @@ def updateRates():
       pairs = getBalancerTokens(balanceApiURL, balancerQueryBody)
       addBalancerHistoryEntry(pairs)
 
-      time.sleep(5)
+      time.sleep(10)
       # print(history[pairs[0]["id"]][i]["token0value"])
       # print(balancerHistory[pairs[0]["symbol"]][i]["price"])
 
@@ -172,6 +184,12 @@ def getSymbols():
     response = []
     for entry in uniformHistory:
         if len(uniformHistory[entry]) > 0:
-          index = len(uniformHistory[entry]) - 1
+          # index = len(uniformHistory[entry]) - 1
           response.append(entry)
     return Response(json.dumps({"length" : len(response), "symbols" : response}), status=200, mimetype='application/json')
+
+@app.route("/get-predictions")
+def getPredictions():
+    predictions = [{"currency":"BTC", "volumen": 1300, "futurePrice":123, "change":5, "volumenChange":8},
+                   {"currency":"ETH", "volumen": 1300, "futurePrice":321, "change":-5,"volumenChange":8}]
+    return Response(json.dumps(predictions), status=200, mimetype='application/json')

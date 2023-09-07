@@ -26,3 +26,10 @@ query priceQuery {
     volumeToken1
   }
 }
+
+
+
+-- poszukiwania rozwiązań predykcji ceny (krypto/giełda/etc) w literaturze
+  -- https://paperswithcode.com/paper/stock-price-prediction-via-discovering-multi
+
+-- rozwój appki

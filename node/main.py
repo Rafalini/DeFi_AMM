@@ -16,7 +16,7 @@ currencies = requests.get('http://192.168.10.1:8000/get-currencies').json()
 
 def analysis(currency, referenceCurrency):
     tendency = 0
-    print(rateHistory)
+    # print(rateHistory)
     # for idx, entry in enumerate(rateHistory[:-1]):
         # if entry[currency][referenceCurrency] > rateHistory[idx+1][currency][referenceCurrency]:
         #     tendency += 1
@@ -49,4 +49,4 @@ while True:
 
     r = requests.post('http://192.168.10.1:8000/transaction', json={"from": profitability[len(profitability)-1]["from"], "to": profitability[len(profitability)-1]["to"], "amount": amount})
     # print(r.json)
-    time.sleep(1+random.random()*2)
+    time.sleep(2+random.random()*10)
