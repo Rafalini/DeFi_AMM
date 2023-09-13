@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -41,8 +42,8 @@ func setLocalVariables() {
 
 	localAddr = conn.LocalAddr().(*net.UDPAddr).String()
 	miner, _ = os.Hostname()
-	metricsFile = strings.Split(localAddr, ":")[0] + os.Getenv("METRICS_FILE")
-	blockChainFile = strings.Split(localAddr, ":")[0] + os.Getenv("BLOCK_CHAIN_FILE")
+	metricsFile = "logs/" + strings.Split(localAddr, ":")[0] + os.Getenv("METRICS_FILE")
+	blockChainFile = "logs/" + strings.Split(localAddr, ":")[0] + os.Getenv("BLOCK_CHAIN_FILE")
 	root = *blockchain.NewRoot()
 }
 
@@ -51,8 +52,6 @@ func printBlock(block blockchain.Block) {
 	for i, s := range block.Transactions {
 		fmt.Println(i, s)
 	}
-	// fmt.Println(block.Nonce)
-	// fmt.Printf("%08b\n ", block.Hash)
 	printHash(block.Hash)
 }
 
@@ -63,8 +62,8 @@ func printHash(hash []byte) {
 	// 		// break
 	// 	}
 	// }
-	fmt.Println(fmt.Sprintf("%x", hash))
 	// fmt.Println("")
+	fmt.Println(fmt.Sprintf("%x", hash))
 }
 
 func searchHash() {
@@ -109,13 +108,15 @@ func searchHash() {
 	// printBlock(block)
 
 	rootLock.Lock()
-	// blockchain.AppendBlock(&root, &block)
-	fmt.Println("Found:")
-	fmt.Printf("prev hash: %s\n", fmt.Sprintf("%x", block.PreviousHash))
-	fmt.Printf("curr hash: %s\n", fmt.Sprintf("%x", block.Hash))
+	blockchain.AppendBlock(&root, &block)
+	// fmt.Println("Found:")
+	// fmt.Printf("prev hash: %s\n", fmt.Sprintf("%x", block.PreviousHash))
+	// fmt.Printf("curr hash: %s\n", fmt.Sprintf("%x", block.Hash))
 
 	rootLock.Unlock()
 	broadcastNode(block)
+	n := 1 + rand.Intn(1)
+	time.Sleep(time.Duration(n) * time.Second)
 }
 
 func broadcastNode(node blockchain.Block) {
@@ -199,14 +200,13 @@ func handleBlocks() {
 		var block = blockchain.Block{}
 		json.Unmarshal(buffer[:n], &block)
 
-		fmt.Println("Recieved:")
-		fmt.Printf("prev hash: %s\n", fmt.Sprintf("%x", block.PreviousHash))
-		fmt.Printf("curr hash: %s\n", fmt.Sprintf("%x", block.Hash))
+		// fmt.Println("Recieved:")
+		// fmt.Printf("prev hash: %s\n", fmt.Sprintf("%x", block.PreviousHash))
+		// fmt.Printf("curr hash: %s\n", fmt.Sprintf("%x", block.Hash))
 
 		rootLock.Lock()
 		blockchain.AppendBlock(&root, &block)
 		rootLock.Unlock()
-
 		//break search
 	}
 }

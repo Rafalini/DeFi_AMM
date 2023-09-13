@@ -47,6 +47,6 @@ while True:
     # amount = np.random.normal(10*root,root)
     amount = random.randrange(1,1000)
 
-    r = requests.post('http://192.168.10.1:8000/transaction', json={"from": profitability[len(profitability)-1]["from"], "to": profitability[len(profitability)-1]["to"], "amount": amount})
+    r = requests.post('http://192.168.10.1:8000/transaction', json={"client":"0xClientID", "from": profitability[len(profitability)-1]["from"], "to": profitability[len(profitability)-1]["to"], "amount": amount})
     # print(r.json)
     time.sleep(2+random.random()*10)

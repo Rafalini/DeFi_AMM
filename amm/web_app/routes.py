@@ -1,10 +1,17 @@
 from web_app import app, currencies, const_product_k, const_sum_k, logger, transactions, transactionCacheLimit
 from flask import Response, request, render_template, stream_with_context
 
-import math, json, time, requests
+import math, json, time, requests, socket
 
 from datetime import datetime
 
+MCAST_GRP = '239.192.168.10'
+MCAST_PORT = 5007
+
+MULTICAST_TTL = 1
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, MULTICAST_TTL)
 
 @app.route("/")
 @app.route("/home")
@@ -141,6 +148,8 @@ def transaction() -> Response:
         currencies[request.json["to"]]["amount"] -= requested
         currencies[request.json["to"]]["volume"] += abs(requested)
 
+
+
         # transactions = addTransaction(transactions, str(request.remote_addr)+" traded "+request.json["to"]["amount"] +" "+request.json["to"], transactionCacheLimit)
         transactions.insert(0,
                             {"peer": str(request.remote_addr), "from": request.json["from"], "to": request.json["to"],
@@ -148,6 +157,23 @@ def transaction() -> Response:
         # transactions.insert(0, str(request.remote_addr)+" traded "+str(round(requested,3)) +" "+str(request.json["to"])+"\n")
         if len(transactions) == transactionCacheLimit:
             transactions.pop(len(transactions) - 1)
+
+        blockChainTransaction={}
+        blockChainTransaction["sender"] = request.json["client"]
+        blockChainTransaction["reciever"] = "0xAMM"
+        blockChainTransaction["amount"] = request.json["amount"]
+        blockChainTransaction["token"] = "ECR17"
+        blockChainTransaction["sender_signature"] = "singature"
+        data_string = json.dumps(blockChainTransaction) #data serialized
+        sock.sendto(bytes(data_string, 'utf-8'), (MCAST_GRP, MCAST_PORT))
+
+        blockChainTransaction["sender"] = "0xAMM"
+        blockChainTransaction["reciever"] = request.json["client"]
+        blockChainTransaction["amount"] = requested
+        blockChainTransaction["token"] = "ECR3"
+        blockChainTransaction["sender_signature"] = "singature"
+        data_string = json.dumps(blockChainTransaction) #data serialized
+        sock.sendto(bytes(data_string, 'utf-8'), (MCAST_GRP, MCAST_PORT))
 
         return Response({"message": "ok", "recieved": requested, "currency": request.json["to"]}, status=200,
                         mimetype='application/json')
