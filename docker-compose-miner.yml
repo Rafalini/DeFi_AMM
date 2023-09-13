@@ -1,0 +1,34 @@
+version: "2.9"
+
+networks:
+  crypto_net:
+    name: crypto_net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.10.0/20
+
+services:
+  miner:
+    image: miner
+    build:
+      context: ./miner
+      dockerfile: ./Dockerfile
+    environment:
+    - METRICS_FILE=_stats.json
+    - BLOCK_CHAIN_FILE=_chain.txt
+    # ports:
+    #   - "8000:8000"
+    networks:
+      - crypto_net
+    volumes:
+      - ./miner:/usr/src/miner
+  publisher:
+    image: publisher
+    build: 
+      context: ./publisher/
+      dockerfile: Dockerfile
+    networks:
+      - crypto_net
+    environment:
+      - PYTHONUNBUFFERED=1
