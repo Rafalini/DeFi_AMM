@@ -5,3 +5,4 @@ amm/web_app/.idea
 /miner/logs
 /.idea/
 plan
+.vscode/settings.json

@@ -13,7 +13,7 @@ services:
   amm_service:
     image: amm
     build:
-      context: ./amm
+      context: ./monitor
       dockerfile: ./Dockerfile
     environment:
     - PYTHONUNBUFFERED=1

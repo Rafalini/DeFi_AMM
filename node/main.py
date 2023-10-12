@@ -31,7 +31,11 @@ while True:
 
     # if int(root) % 2 == 0:
     #     currencyFrom, currencyTo = swap(currencyFrom, currencyTo)
-    rateHistory.append(requests.get(ammUrl+'/get-rates').json())
+    try:
+        rateHistory.append(requests.get(ammUrl+'/get-rates').json())
+    except:
+        pass
+    
     if len(rateHistory) == 10:
         rateHistory.pop(0)
 
