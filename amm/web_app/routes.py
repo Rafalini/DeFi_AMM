@@ -1,17 +1,11 @@
 from web_app import app, currencies, const_product_k, const_sum_k, logger, transactions, transactionCacheLimit
 from flask import Response, request, render_template, stream_with_context
+from threading import Thread
+import atexit
 
 import math, json, time, requests, socket
 
 from datetime import datetime
-
-MCAST_GRP = '239.192.168.10'
-MCAST_PORT = 5007
-
-MULTICAST_TTL = 1
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, MULTICAST_TTL)
 
 @app.route("/")
 @app.route("/home")

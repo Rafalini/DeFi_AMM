@@ -6,13 +6,14 @@ import threading
 from flask import Response
 from datetime import datetime
 from web_app import app
-from bs4 import BeautifulSoup
+# from bs4 import BeautifulSoup
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dropout, Dense, Activation
+from tensorflow.keras.layers import LSTM, Dense
 
-checkpoint_path = "web_app/model_weights/cp.ckpt"
-checkpoint_dir = os.path.dirname(checkpoint_path)
+checkpoint_path = "./weights"
+
+print("Initialization of prediction model...")
 
 model = Sequential()
 model.add(LSTM(50, return_sequences = True, input_shape=(50, 1)))
@@ -20,6 +21,8 @@ model.add(LSTM(64, return_sequences = False))
 model.add(Dense(1, activation='linear'))
 model.compile(loss='mse', optimizer='rmsprop')
 model.load_weights(checkpoint_path)
+
+print("Initialization done.")
 
 ammUrl = "http://192.168.10.1:8000"
 uniswapApiURL = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
@@ -64,10 +67,12 @@ def getEthPrice():
 
   params1 = {'ids': 'weth', 'vs_currencies': 'usd'}
   params2 = {'symbol': 'ETHUSDT'}
-
-  response1 = requests.get(url1, params=params1)
-  response2 = requests.get(url2, params=params2)
-  response3 = requests.get(url3, params=params2)
+  try:
+    response1 = requests.get(url1, params=params1)
+    response2 = requests.get(url2, params=params2)
+    response3 = requests.get(url3, params=params2)
+  except Exception:
+    pass
   weth_price = 0
 
   if response1.status_code == 200:

@@ -42,6 +42,7 @@ func setLocalVariables() {
 
 	localAddr = conn.LocalAddr().(*net.UDPAddr).String()
 	miner, _ = os.Hostname()
+	os.Mkdir("logs", os.ModePerm)
 	metricsFile = "logs/" + strings.Split(localAddr, ":")[0] + os.Getenv("METRICS_FILE")
 	blockChainFile = "logs/" + strings.Split(localAddr, ":")[0] + os.Getenv("BLOCK_CHAIN_FILE")
 	root = *blockchain.NewRoot()
@@ -139,7 +140,8 @@ func broadcastNode(node blockchain.Block) {
 	defer conn.Close()
 
 	blockStr, _ := json.Marshal(node)
-
+	// fmt.Println("Sending block: ")
+	// fmt.Println(blockStr)
 	_, err = conn.Write(blockStr)
 	if err != nil {
 		fmt.Println("Error sending data:", err)

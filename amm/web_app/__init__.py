@@ -5,6 +5,13 @@ import json
 import logging
 from flask import Flask
 
+# udpthread = None
+
+# def close_running_threads():
+#     print("closing threads")
+    # udpthread.join()
+
+# atexit.register(close_running_threads)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 app = Flask(__name__)

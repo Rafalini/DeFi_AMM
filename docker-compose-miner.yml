@@ -23,6 +23,7 @@ services:
       - crypto_net
     volumes:
       - ./miner:/usr/src/miner
+      
   publisher:
     image: publisher
     build: 
