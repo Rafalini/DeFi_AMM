@@ -24,7 +24,11 @@ model.load_weights(checkpoint_path)
 
 print("Initialization done.")
 
-ammUrl = "http://192.168.10.1:8000"
+addr = os.getenv("AMM_SERVER_ADDR")
+port = int(os.getenv("AMM_SERVER_PORT"))
+
+ammUrl = "http://"+addr+":"+str(port)
+
 uniswapApiURL = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
 sushiswApiURL = "https://api.thegraph.com/subgraphs/name/sushiswap/exchange"
 balanceApiURL = "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer"

@@ -29,6 +29,10 @@ type TreeNode struct {
 	Children []*TreeNode
 }
 
+func (b *Block) Compare(block Block) bool {
+	return bytes.Equal(b.Hash, block.Hash)
+}
+
 func (n *TreeNode) Print(lvl int) {
 	fmt.Print(strings.Repeat(" ", lvl))
 	fmt.Println(n.Block.Miner)

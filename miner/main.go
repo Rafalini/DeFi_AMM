@@ -16,6 +16,7 @@ import (
 )
 
 var (
+	lastBlock           blockchain.Block
 	miner               string
 	metricsFile         string
 	blockChainFile      string
@@ -99,7 +100,7 @@ func searchHash() {
 		}
 
 	}
-
+	lastBlock = block
 	var stats metrics.Stats
 	stats.Attempts = block.Nonce - initialVal
 	stats.Times = 1
@@ -121,7 +122,7 @@ func searchHash() {
 }
 
 func broadcastNode(node blockchain.Block) {
-	broadcastAddress := "239.192.168.10"
+	broadcastAddress := "239.192.168.255"
 	port := 5006
 
 	// Create a UDP address
@@ -150,10 +151,11 @@ func broadcastNode(node blockchain.Block) {
 }
 
 func handleTransactions() {
-	multicastAddr := "239.192.168.10:5007"
+	multicastAddr := "239.192.168.255:5007"
 
 	addr, _ := net.ResolveUDPAddr("udp", multicastAddr)
 	conn, _ := net.ListenMulticastUDP("udp", nil, addr)
+
 	defer conn.Close()
 
 	buffer := make([]byte, 1024)
@@ -173,7 +175,17 @@ func handleTransactions() {
 		// fmt.Println(transaction)
 		// fmt.Printf("Got Trans: %d\n", n)
 		queueLock.Lock()
-		pendingTransactions = append(pendingTransactions, transaction)
+		var onList = false
+		for _, trans := range pendingTransactions {
+			if trans.Sender_signature == transaction.Sender_signature {
+				onList = true
+				fmt.Println("not adding trans")
+				break
+			}
+		}
+		if !onList {
+			pendingTransactions = append(pendingTransactions, transaction)
+		}
 		queueLock.Unlock()
 
 		searchHash()
@@ -181,10 +193,8 @@ func handleTransactions() {
 }
 
 func handleBlocks() {
-	multicastAddr := "239.192.168.10:5006"
-
-	addr, _ := net.ResolveUDPAddr("udp", multicastAddr)
-	conn, _ := net.ListenMulticastUDP("udp", nil, addr)
+	multicastAddr, _ := net.ResolveUDPAddr("udp", "239.192.168.255:5006")
+	conn, _ := net.ListenMulticastUDP("udp", nil, multicastAddr)
 	defer conn.Close()
 
 	buffer := make([]byte, 1024)
@@ -205,9 +215,11 @@ func handleBlocks() {
 		// fmt.Println("Recieved:")
 		// fmt.Printf("prev hash: %s\n", fmt.Sprintf("%x", block.PreviousHash))
 		// fmt.Printf("curr hash: %s\n", fmt.Sprintf("%x", block.Hash))
-
 		rootLock.Lock()
 		blockchain.AppendBlock(&root, &block)
+		// if blockchain.AppendBlock(&root, &block) {
+		// 	// blockchain.removeUsedTransactions()
+		// }
 		rootLock.Unlock()
 		//break search
 	}

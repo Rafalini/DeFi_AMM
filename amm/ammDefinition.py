@@ -1,4 +1,4 @@
-import json, math
+import json, math, hashlib
 from datetime import datetime
 
 class AmmClass:
@@ -8,6 +8,7 @@ class AmmClass:
         self.config = json.load(config_file)
         self.currencies = {}
         self.transactions = []
+        self.pendingTransactions = []
         self.transactionCacheLimit = 8
         self.const_product_k = 1
         self.const_sum_k = 0
@@ -19,19 +20,35 @@ class AmmClass:
 
     def getCurrencies(self):
         # response = []
-        # for entry in currencies:
-        #     response.append(entry)
+        # for entry in self.currencies:
+        #     print(entry)
+        #     response.append({"currency":entry, "data":self.currencies[entry]})
         return self.currencies.copy()
     
     def getCurrentAmounts(self):
-        data = {}
         amounts = {}
-        rates = {}
+
+        btcSum, ethSum = 0,0
+        n = 30
+        if len(self.pendingTransactions)>n:
+            for transaction in self.pendingTransactions[-n:]:
+                if transaction["sender"] == "0xAMM":
+                    if transaction["token"] == "BTC":
+                        btcSum -= transaction["amount"]
+                    if transaction["token"] == "ETH":
+                        ethSum -= transaction["amount"] 
+                if transaction["reciever"] == "0xAMM":
+                    if transaction["token"] == "BTC":
+                        btcSum += transaction["amount"]
+                    if transaction["token"] == "ETH":
+                        ethSum += transaction["amount"] 
+
         for currency in self.currencies:
-            amounts[currency] = self.currencies[currency]["amount"]
-            if currency != "BTC":
-                rates[currency] = self.currencies[currency]["amount"] / self.currencies["BTC"]["amount"]
-        return data
+            if currency == "BTC":
+                amounts[currency] = self.currencies[currency]["amount"] + btcSum
+            if currency == "ETH":
+                amounts[currency] = self.currencies[currency]["amount"] + ethSum
+        return amounts
     
     def requestedByConstantProduct(self, request, const_k):
         # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
@@ -58,17 +75,17 @@ class AmmClass:
     def getRates(self):
         response = {}
         response["time"] = datetime.now().strftime("%H:%M:%S")
-        for currency in self.currencies:
+        list = self.getCurrentAmounts()
+        for currency in list:
             rates = {}
-            for referenceCurrency in self.currencies:
-                # if referenceCurrency != currency:
-                rates[referenceCurrency] = self.currencies[referenceCurrency]["amount"] / self.currencies[currency]["amount"]
+            for referenceCurrency in list:
+                if referenceCurrency != currency:
+                    rates[referenceCurrency] = list[referenceCurrency] / list[currency]
             response[currency] = rates
         return response
     
 
-    def performTransaction(self, request):
-
+    def performTransaction(self, request):    
         requested = self.requestedByConstantProduct(request, self.const_product_k)
 
         if self.currencies[request.json["to"]]["amount"] - requested > 0:
@@ -78,27 +95,29 @@ class AmmClass:
             self.currencies[request.json["to"]]["amount"] -= requested
             self.currencies[request.json["to"]]["volume"] += abs(requested)
 
-            # transactions = addTransaction(transactions, str(request.remote_addr)+" traded "+request.json["to"]["amount"] +" "+request.json["to"], transactionCacheLimit)
+            # transactions = addTransaction(transactions, request.getClientAddress().host+" traded "+request.json["to"]["amount"] +" "+request.json["to"], transactionCacheLimit)
             self.transactions.insert(0,
-                                {"peer": str(request.remote_addr), "from": request.json["from"], "to": request.json["to"],
+                                {"peer": request.getClientAddress().host, "from": request.json["from"], "to": request.json["to"],
                                 "amountFrom": request.json["amount"], "amountTo": requested})
-            # transactions.insert(0, str(request.remote_addr)+" traded "+str(round(requested,3)) +" "+str(request.json["to"])+"\n")
-            if len(self.transactions) == self.transactionCacheLimit:
-                self.transactions.pop(len(self.transactions) - 1)
+            # transactions.insert(0, request.getClientAddress().host+" traded "+str(round(requested,3)) +" "+str(request.json["to"])+"\n")
+            # if len(self.transactions) == self.transactionCacheLimit:
+                # self.transactions.pop(len(self.transactions) - 1)
                 # self.transactions.pop()
 
             blockChainTransaction1={}
             blockChainTransaction1["sender"] = request.json["client"]
             blockChainTransaction1["reciever"] = "0xAMM"
             blockChainTransaction1["amount"] = request.json["amount"]
-            blockChainTransaction1["token"] = "ECR17"
-            blockChainTransaction1["sender_signature"] = "singature"
+            blockChainTransaction1["token"] = request.json["from"]
+            blockChainTransaction1["sender_signature"] = hashlib.sha256(str(blockChainTransaction1).encode('UTF-8')).hexdigest()
             blockChainTransaction2 = {}
             blockChainTransaction2["sender"] = "0xAMM"
             blockChainTransaction2["reciever"] = request.json["client"]
             blockChainTransaction2["amount"] = requested
-            blockChainTransaction2["token"] = "ECR3"
-            blockChainTransaction2["sender_signature"] = "singature"
+            blockChainTransaction2["token"] = request.json["to"]
+            blockChainTransaction2["sender_signature"] = hashlib.sha256(str(blockChainTransaction1).encode('UTF-8')).hexdigest()
+            self.pendingTransactions.append(blockChainTransaction1)
+            self.pendingTransactions.append(blockChainTransaction2)
             return [blockChainTransaction1, blockChainTransaction2]
         else:
             return []
@@ -127,7 +146,7 @@ class AmmClass:
         return changes
     
     def getTransactions(self):
-        return self.transactions.copy()
+        return self.transactions
 
     def getAmounts(self):
         amounts = {}

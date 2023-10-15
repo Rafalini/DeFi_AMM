@@ -269,13 +269,13 @@ $(document).ready(function () {
     const source = new EventSource("/changes-data");
     source.onmessage = function (event) {
             const data = JSON.parse(event.data);
-
+            console.log('elo')
             data.forEach((entry) => {
 
-                var vol = document.getElementById(entry.currency+'-volume-id');
-                var volumechg = document.getElementById(entry.currency+'-volume-change-id');
-                var price = document.getElementById(entry.currency+'-price-id');
-                var pricechg = document.getElementById(entry.currency+'-price-change-id');
+                var vol = document.getElementById(entry.currency+'-oracle-volume-id');
+                var volumechg = document.getElementById(entry.currency+'-oracle-volume-change-id');
+                var price = document.getElementById(entry.currency+'-oracle-price-id');
+                var pricechg = document.getElementById(entry.currency+'-oracle-price-change-id');
 
                 vol.innerHTML = entry.volume;
                 price.innerHTML = entry.price;
@@ -287,7 +287,7 @@ $(document).ready(function () {
                 } else {
                   pricechg.classList.remove('green-percentage');
                   pricechg.classList.add('red-percentage');
-                  pricechg.innerHTML = ""+entry.change+"%";
+                  pricechg.innerHTML = "-"+entry.change+"%";
                 }
 
                 if (parseInt(entry.volumeChange) > 0.0000000001) {
@@ -297,7 +297,7 @@ $(document).ready(function () {
                 } else {
                   volumechg.classList.remove('green-percentage');
                   volumechg.classList.add('red-percentage');
-                  volumechg.innerHTML = ""+entry.volumeChange+"%";
+                  volumechg.innerHTML = "-"+entry.volumeChange+"%";
                 }
             })
         }

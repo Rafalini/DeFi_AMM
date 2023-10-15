@@ -1,18 +1,32 @@
-import requests
-import time
-import random
+import requests, time, random, socket, os
 import numpy as np
 
-ammUrl = "http://192.168.10.1:8000"
+
+
+addr = os.getenv("AMM_SERVER_ADDR")
+port = int(os.getenv("AMM_SERVER_PORT"))
+
+ammUrl = "http://"+addr+":"+str(port)
+# ammUrl = "http://localhost:5678"
 
 time.sleep(2+random.random()*2)
 print("consumer started...")
 
 amount = 0
 rateHistory = []
+currencies = requests.get(ammUrl+'/get-currencies').json()
 
-currencies = requests.get('http://192.168.10.1:8000/get-currencies').json()
-
+def getlocalIp():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('192.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
 
 def analysis(currency, referenceCurrency):
     tendency = 0
@@ -25,19 +39,15 @@ def analysis(currency, referenceCurrency):
         # tendency -= rateHistory[idx][currency][referenceCurrency] - rateHistory[idx+1][currency][referenceCurrency]
     return rateHistory[len(rateHistory)-1][currency][referenceCurrency]
 
+localIp = getlocalIp()
 
 while True:
     root = random.random() * 10
-
-    # if int(root) % 2 == 0:
-    #     currencyFrom, currencyTo = swap(currencyFrom, currencyTo)
+   
     try:
         rateHistory.append(requests.get(ammUrl+'/get-rates').json())
     except:
         pass
-    
-    if len(rateHistory) == 10:
-        rateHistory.pop(0)
 
     profitability = []
     for currency in currencies:
@@ -49,8 +59,13 @@ while True:
     # print(profitability)
 
     # amount = np.random.normal(10*root,root)
-    amount = random.randrange(1,1000)
-
-    r = requests.post('http://192.168.10.1:8000/transaction', json={"client":"0xClientID", "from": profitability[len(profitability)-1]["from"], "to": profitability[len(profitability)-1]["to"], "amount": amount})
-    # print(r.json)
-    time.sleep(2+random.random()*10)
+    amount = random.randrange(70,100)
+    request = {"client":localIp, "from": profitability[len(profitability)-1]["from"], "to": profitability[len(profitability)-1]["to"], "amount": amount}
+    # print(request)
+    try:
+        r = requests.post(ammUrl+'/transaction', json=request)
+    except:
+        time.sleep(30)
+    # print(r.json())
+    # time.sleep(random.random())
+    time.sleep(0.3)

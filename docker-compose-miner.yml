@@ -6,7 +6,8 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 192.168.10.0/20
+        - subnet: 239.192.168.0/24
+
 
 services:
   miner:
