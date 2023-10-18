@@ -1,7 +1,4 @@
 import requests, time, random, socket, os
-import numpy as np
-
-
 
 addr = os.getenv("AMM_SERVER_ADDR")
 port = int(os.getenv("AMM_SERVER_PORT"))
@@ -13,6 +10,7 @@ time.sleep(2+random.random()*2)
 print("consumer started...")
 
 amount = 0
+count = 0
 rateHistory = []
 currencies = requests.get(ammUrl+'/get-currencies').json()
 
@@ -42,6 +40,8 @@ def analysis(currency, referenceCurrency):
 localIp = getlocalIp()
 
 while True:
+    count += 0
+
     root = random.random() * 10
    
     try:
@@ -49,17 +49,19 @@ while True:
     except:
         pass
 
-    profitability = []
-    for currency in currencies:
-        for referenceCurrency in currencies:
-            if currency != referenceCurrency:
-                profitability.append({"key":analysis(currency, referenceCurrency), "from":currency, "to":referenceCurrency})
+    if count % 5 == 0:
 
-    profitability = sorted(profitability, key=lambda d: d['key']) 
+        profitability = []
+        for currency in currencies:
+            for referenceCurrency in currencies:
+                if currency != referenceCurrency:
+                    profitability.append({"key":analysis(currency, referenceCurrency), "from":currency, "to":referenceCurrency})
+
+        profitability = sorted(profitability, key=lambda d: d['key']) 
     # print(profitability)
 
     # amount = np.random.normal(10*root,root)
-    amount = random.randrange(70,100)
+    amount = random.randrange(0,10)
     request = {"client":localIp, "from": profitability[len(profitability)-1]["from"], "to": profitability[len(profitability)-1]["to"], "amount": amount}
     # print(request)
     try:
@@ -68,4 +70,4 @@ while True:
         time.sleep(30)
     # print(r.json())
     # time.sleep(random.random())
-    time.sleep(0.3)
+    time.sleep(0.7)

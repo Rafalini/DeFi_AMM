@@ -9,3 +9,4 @@ plan
 monitor/web_app/__pycache__/__init__.cpython-311.pyc
 monitor/web_app/__pycache__/ammAdapter.cpython-311.pyc
 amm/__pycache__/ammDefinition.cpython-311.pyc
+*.csv

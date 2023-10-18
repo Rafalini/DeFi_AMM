@@ -1,5 +1,8 @@
-import json, math, hashlib
+import json, math, hashlib, csv
 from datetime import datetime
+
+logFile = "log.csv"
+fieldnames = ['BTCamount', 'ETHamount', 'BTCvETHrate']
 
 class AmmClass:
  
@@ -12,6 +15,9 @@ class AmmClass:
         self.transactionCacheLimit = 8
         self.const_product_k = 1
         self.const_sum_k = 0
+        f = open(logFile, "w")
+        f.write("BTCamount,ETHamount,BTCvETHrate")
+        f.close()
 
         for entry in self.config["currencies"]:
             self.currencies[entry["short"]] = {"amount":entry["amount"], "minimal_part": entry["minimal_part"], "volume": 0}
@@ -25,7 +31,8 @@ class AmmClass:
         #     response.append({"currency":entry, "data":self.currencies[entry]})
         return self.currencies.copy()
     
-    def getCurrentAmounts(self):
+    def getAmounts(self):
+        self.saveStep()    
         amounts = {}
 
         btcSum, ethSum = 0,0
@@ -45,9 +52,9 @@ class AmmClass:
 
         for currency in self.currencies:
             if currency == "BTC":
-                amounts[currency] = self.currencies[currency]["amount"] + btcSum
+                amounts[currency] = self.currencies[currency]["amount"] - btcSum
             if currency == "ETH":
-                amounts[currency] = self.currencies[currency]["amount"] + ethSum
+                amounts[currency] = self.currencies[currency]["amount"] - ethSum
         return amounts
     
     def requestedByConstantProduct(self, request, const_k):
@@ -73,9 +80,10 @@ class AmmClass:
     
 
     def getRates(self):
-        response = {}
+        response = {}    
         response["time"] = datetime.now().strftime("%H:%M:%S")
         list = self.getCurrentAmounts()
+        # print(list)
         for currency in list:
             rates = {}
             for referenceCurrency in list:
@@ -84,8 +92,11 @@ class AmmClass:
             response[currency] = rates
         return response
     
+    # def saveRates(self):
+    #     file = "rates.json"
+    
 
-    def performTransaction(self, request):    
+    def performTransaction(self, request):
         requested = self.requestedByConstantProduct(request, self.const_product_k)
 
         if self.currencies[request.json["to"]]["amount"] - requested > 0:
@@ -148,8 +159,22 @@ class AmmClass:
     def getTransactions(self):
         return self.transactions
 
-    def getAmounts(self):
+    def getCurrentAmounts(self):
         amounts = {}
         for currency in self.currencies:
             amounts[currency] = self.currencies[currency]["amount"]
         return amounts
+    
+    def saveStep(self):
+        with open(logFile, 'a', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+            if csvfile.tell() == 0:
+                writer.writeheader()
+
+            ls = self.getCurrentAmounts()
+            rates = self.getRates()
+
+            data = {fieldnames[0]: ls["BTC"], fieldnames[1]:ls["ETH"], fieldnames[2]: rates["BTC"]["ETH"]}  # Replace with your data
+            writer.writerow(data)
+            csvfile.close()

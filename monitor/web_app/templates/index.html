@@ -287,7 +287,7 @@ $(document).ready(function () {
                 } else {
                   pricechg.classList.remove('green-percentage');
                   pricechg.classList.add('red-percentage');
-                  pricechg.innerHTML = "-"+entry.change+"%";
+                  pricechg.innerHTML = entry.change+"%";
                 }
 
                 if (parseInt(entry.volumeChange) > 0.0000000001) {
@@ -297,7 +297,7 @@ $(document).ready(function () {
                 } else {
                   volumechg.classList.remove('green-percentage');
                   volumechg.classList.add('red-percentage');
-                  volumechg.innerHTML = "-"+entry.volumeChange+"%";
+                  volumechg.innerHTML = entry.volumeChange+"%";
                 }
             })
         }
