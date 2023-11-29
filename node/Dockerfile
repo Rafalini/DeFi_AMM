@@ -1,10 +1,12 @@
-FROM python:3.11.6-bullseye
+FROM golang:1.21.1-bullseye
 
-WORKDIR /usr/src/app
-
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /usr/src/miner
 
 COPY . .
 
-CMD [ "python", "./main.py" ]
+RUN go mod download && go mod verify
+RUN CGO_ENABLED=0 GOOS=linux go build -o /miner
+
+EXPOSE 8080
+
+ENTRYPOINT ["/miner"]

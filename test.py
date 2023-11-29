@@ -1,17 +1,32 @@
-import json
+from cryptography.hazmat.primitives.asymmetric import rsa
+# Generate the RSA private key
+key = rsa.generate_private_key(
+    public_exponent=65537,
+    key_size=2048,
+)
 
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
-s =  b'{"Miner":"192.168.10.5:44708","Hash":"AJ8JclsKxA2R/xO1Ox/9JtDRrvIcEZHG7M0tjIS0Jao=","PreviousHash":"ACAAjuevkDQwvWK/Z0cppTmOuHAGIvpCcrUkk0HqIEk=","Nonce":6412,"Transactions":[{"Sender":"192.168.10.6","Reciever":"0xAMM","Amount":"","Token":"ECR17","Sender_signature":"a5f5d547ded956050e883e91f444cc4c60c249cec5fa05ef15f3a9f30e897497"},{"Sender":"0xAMM","Reciever":"192.168.10.6","Amount":"","Token":"ECR3","Sender_signature":"93d8f10c9e5df1498c272eea1510750d6a516e90714424624ff56e4202903f4e"},{"Sender":"192.168.10.6","Reciever":"0xAMM","Amount":"","Token":"ECR17","Sender_signature":"d3afad3057e29cc425bff45bd8e9d5b1f5da63b68810b9a71df5c6b2ee0b8c11"}]}'
-a =  b'{"Miner":"192.168.10.5:44708","Hash":"AJ8JclsKxA2R/xO1Ox/9JtDRrvIcEZHG7M0tjIS0Jao=","PreviousHash":"ACAAjuevkDQwvWK/Z0cppTmOuHAGIvpCcrUkk0HqIEk=","Nonce":6412,"Transactions":[{"Sender":"192.168.10.6","Reciever":"0xAMM","Amount":"","Token":"ECR17","Sender_signature":"a5f5d547ded956050e883e91f444cc4c60c249cec5fa05ef15f3a9f30e897497"},{"Sender":"0xAMM","Reciever":"192.168.10.6","Amount":"","Token":"ECR3","Sender_signature":"93d8f10c9e5df1498c272eea1510750d6a516e90714424624ff56e4202903f4e"},{"Sender":"192.168.10.6","Reciever":"0xAMM","Amount":"","Token":"ECR17","Sender_signature":"d3afad3057e29cc425bff45bd8e9d5b1f5da63b68810b9a71df5c6b2ee0b8c11"}]}'
+message = b"secret text"
+print(message)
+ciphertext = key.public_key().encrypt(
+    message,
+    padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        algorithm=hashes.SHA256(),
+        label=None
+    )
+)
 
-js = json.loads(s)
+print(ciphertext)
 
-ar = []
-ar += js["Transactions"]
-
-print(len(js["Transactions"]))
-
-js = json.loads(a)
-ar += js["Transactions"]
-
-print(len(ar))
+plaintext = key.decrypt(
+    ciphertext,
+    padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        algorithm=hashes.SHA256(),
+        label=None
+    )
+)
+print(plaintext)
