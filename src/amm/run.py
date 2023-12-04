@@ -3,7 +3,7 @@ from twisted.web.server import Site
 from twisted.web.resource import Resource
 from twisted.internet.protocol import DatagramProtocol
 import socket, json, sys
-import logging
+import logging, os
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -13,8 +13,11 @@ from ammDefinition import AmmClass
 amm = AmmClass('config.json')
 # pastTransactions = []
 counter = 0
-MCAST_GRP = '239.192.168.255'
-MCAST_PORT = 5007
+TRANS_MCAST_ADRR = os.getenv("TRANSACTION_BROADCAST").split(":")[0]
+TRANS_MCAST_PORT = os.getenv("TRANSACTION_BROADCAST").split(":")[1]
+
+NODE_MCAST_ADRR = os.getenv("NODE_BROADCAST").split(":")[0]
+NODE_MCAST_PORT = os.getenv("NODE_BROADCAST").split(":")[1]
 MULTICAST_TTL = 1
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -76,7 +79,7 @@ class PerformTransaction(BaseResource):
         result = amm.performTransaction(request)
         if result:
             for blockChainTransaction in result:
-                sock.sendto(bytes(json.dumps(blockChainTransaction), 'utf-8'), (MCAST_GRP, MCAST_PORT))
+                sock.sendto(bytes(json.dumps(blockChainTransaction), 'utf-8'), (TRANS_MCAST_ADRR, TRANS_MCAST_PORT))
                 
             response = {"message": "ok", "recieved": result[1]["amount"], "currency": request.json["to"]}
         else:
@@ -100,19 +103,21 @@ class MyRootResource(Resource):
 class MyMulticastUDPProtocol(DatagramProtocol):
     def startProtocol(self):
         # Specify the multicast address to listen to
-        self.transport.joinGroup("239.192.168.255")
+        self.transport.joinGroup(NODE_MCAST_ADRR)
 
     def datagramReceived(self, data, addr):
         # Handle the incoming multicast UDP datagram here
-        # logger.info("Received multicast UDP data: %s from %s", data.decode('utf-8'), addr)
-        # js = json.loads(data.decode('utf-8'))
+        logger.info("Received multicast UDP data: %d [b] from %s", len(data), addr)
+        js = json.loads(data.decode('utf-8'))
+
+        for trans in js["Transactions"]:
+            print(trans)
         # pastTransactions += js["Transactions"]
         # Add your logic to process the multicast UDP data
         pass
 
 
-
-reactor.listenMulticast(5006, MyMulticastUDPProtocol())
+reactor.listenMulticast(int(NODE_MCAST_PORT), MyMulticastUDPProtocol())
 
 root = MyRootResource()
 site = Site(root)

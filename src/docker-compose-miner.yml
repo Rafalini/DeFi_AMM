@@ -25,12 +25,28 @@ services:
     volumes:
       - ./miner:/usr/src/miner
       
-  publisher:
-    image: publisher
+  # publisher:
+  #   image: publisher
+  #   build: 
+  #     context: ./publisher/
+  #     dockerfile: Dockerfile
+  #   networks:
+  #     - crypto_net
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+
+  node:
+    image: node
     build: 
-      context: ./publisher/
+      context: ./node/
       dockerfile: Dockerfile
-    networks:
-      - crypto_net
     environment:
       - PYTHONUNBUFFERED=1
+      - AMM_SERVER_ADDR=192.168.10.3
+      - AMM_SERVER_PORT=5000
+      - TRANSACTION_BROADCAST=239.192.168.255:5007
+      - NODE_BROADCAST=239.192.168.255:5006
+    networks:
+      - crypto_net
+    cpus: 0.2
+    mem_limit: 128MB

@@ -37,6 +37,8 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - SERVER_PORT=5000
+    - TRANSACTION_BROADCAST=239.192.168.255:5007
+    - NODE_BROADCAST=239.192.168.255:5006
     ports:
       - 5001:5000
     networks:
@@ -48,23 +50,23 @@ services:
     #   driver: "none"
 
 
-  orcle_service:
-    image: oracle
-    build:
-      context: ./oracle
-      dockerfile: ./Dockerfile
-    environment:
-      - PYTHONUNBUFFERED=1
-      - FLASK_ORACLE_PORT=5000
-      - AMM_SERVER_ADDR=192.168.10.3
-      - AMM_SERVER_PORT=5000
-    ports:
-      - 5002:5000
-    networks:
-      crypto_net:
-        ipv4_address: 192.168.10.4
-    logging:
-      driver: "none"
+  # orcle_service:
+  #   image: oracle
+  #   build:
+  #     context: ./oracle
+  #     dockerfile: ./Dockerfile
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #     - FLASK_ORACLE_PORT=5000
+  #     - AMM_SERVER_ADDR=192.168.10.3
+  #     - AMM_SERVER_PORT=5000
+  #   ports:
+  #     - 5002:5000
+  #   networks:
+  #     crypto_net:
+  #       ipv4_address: 192.168.10.4
+  #   logging:
+  #     driver: "none"
 
   
   node:
@@ -78,6 +80,9 @@ services:
       - PYTHONUNBUFFERED=1
       - AMM_SERVER_ADDR=192.168.10.3
       - AMM_SERVER_PORT=5000
+      - TRANSACTION_BROADCAST=239.192.168.255:5007
+      - NODE_BROADCAST=239.192.168.255:5006
+      - SIGNATURE_VERIFY_PORT=5005
     networks:
       - crypto_net
     cpus: 0.2
@@ -94,6 +99,9 @@ services:
     environment:
       - METRICS_FILE=_stats.json
       - BLOCK_CHAIN_FILE=_chain.txt
+      - TRANSACTION_BROADCAST=239.192.168.255:5007
+      - NODE_BROADCAST=239.192.168.255:5006
+      - SIGNATURE_VERIFY_PORT=5005
     networks:
       - crypto_net
     volumes:

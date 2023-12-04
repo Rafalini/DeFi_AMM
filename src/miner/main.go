@@ -1,14 +1,19 @@
 package main
 
 import (
+	"crypto"
+	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
-	"main/blockchain"
+	"main/blockchainDataModel"
 	"main/metrics"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -16,17 +21,18 @@ import (
 )
 
 var (
-	lastBlock           blockchain.Block
+	lastBlock           blockchainDataModel.Block
 	miner               string
 	metricsFile         string
 	blockChainFile      string
 	localAddr           string
-	root                blockchain.TreeNode
+	sigVerifyPort       string
+	root                blockchainDataModel.TreeNode
 	rootLock            sync.Mutex
 	miningLock          sync.Mutex
 	queueLock           sync.Mutex
 	breakHashSearch     = true
-	pendingTransactions []blockchain.Transaction
+	pendingTransactions []blockchainDataModel.Transaction
 )
 
 const (
@@ -46,10 +52,11 @@ func setLocalVariables() {
 	os.Mkdir("logs", os.ModePerm)
 	metricsFile = "logs/" + strings.Split(localAddr, ":")[0] + os.Getenv("METRICS_FILE")
 	blockChainFile = "logs/" + strings.Split(localAddr, ":")[0] + os.Getenv("BLOCK_CHAIN_FILE")
-	root = *blockchain.NewRoot()
+	sigVerifyPort = os.Getenv("SIGNATURE_VERIFY_PORT")
+	root = *blockchainDataModel.NewRoot()
 }
 
-func printBlock(block blockchain.Block) {
+func printBlock(block blockchainDataModel.Block) {
 	fmt.Println("Block:")
 	for i, s := range block.Transactions {
 		fmt.Println(i, s)
@@ -73,9 +80,9 @@ func searchHash() {
 		return
 	}
 
-	block := blockchain.Block{}
+	block := blockchainDataModel.Block{}
 	block.Miner = localAddr
-	block.PreviousHash = blockchain.GetDeepestLeave(&root).Block.Hash
+	block.PreviousHash = blockchainDataModel.GetDeepestLeave(&root).Block.Hash
 
 	queueLock.Lock()
 	block.Transactions = pendingTransactions[:3]
@@ -110,7 +117,7 @@ func searchHash() {
 	// printBlock(block)
 
 	rootLock.Lock()
-	blockchain.AppendBlock(&root, &block)
+	blockchainDataModel.AppendBlock(&root, &block)
 	// fmt.Println("Found:")
 	// fmt.Printf("prev hash: %s\n", fmt.Sprintf("%x", block.PreviousHash))
 	// fmt.Printf("curr hash: %s\n", fmt.Sprintf("%x", block.Hash))
@@ -121,7 +128,7 @@ func searchHash() {
 	time.Sleep(time.Duration(n) * time.Second)
 }
 
-func broadcastNode(node blockchain.Block) {
+func broadcastNode(node blockchainDataModel.Block) {
 	broadcastAddress := "239.192.168.255"
 	port := 5006
 
@@ -170,25 +177,57 @@ func handleTransactions() {
 			continue
 		}
 
-		var transaction = blockchain.Transaction{}
+		var transaction = blockchainDataModel.Transaction{}
 		json.Unmarshal(buffer[:n], &transaction)
-		// fmt.Println(transaction)
-		// fmt.Printf("Got Trans: %d\n", n)
-		queueLock.Lock()
-		var onList = false
-		for _, trans := range pendingTransactions {
-			if trans.Sender_signature == transaction.Sender_signature {
-				onList = true
-				fmt.Println("not adding trans")
-				break
+		fmt.Println(transaction)
+		fmt.Printf("Got Trans: %d\n", n)
+		if validateSignature(transaction) {
+			queueLock.Lock()
+			var onList = false
+			for _, trans := range pendingTransactions {
+				if trans.TransactionHash == transaction.TransactionHash {
+					onList = true
+					fmt.Println("not adding trans")
+					break
+				}
 			}
-		}
-		if !onList {
-			pendingTransactions = append(pendingTransactions, transaction)
-		}
-		queueLock.Unlock()
+			if !onList {
+				pendingTransactions = append(pendingTransactions, transaction)
+				fmt.Println("Adding trans")
+			}
+			queueLock.Unlock()
 
-		searchHash()
+			searchHash()
+		}
+	}
+}
+
+func validateSignature(transaction blockchainDataModel.Transaction) bool {
+	url := transaction.Sender + ":" + sigVerifyPort + "/get-public-key"
+
+	// Make the GET request
+	fmt.Println(url)
+	response, err := http.Get(url)
+	if err != nil {
+		fmt.Println("GET request failed:", err)
+		return false
+	}
+	defer response.Body.Close()
+
+	body, _ := ioutil.ReadAll(response.Body)
+
+	var sendersKey rsa.PublicKey
+	json.Unmarshal(body, &sendersKey)
+	hash, _ := hex.DecodeString(transaction.TransactionHash)
+	sig, _ := hex.DecodeString(transaction.SenderSignature)
+
+	err = rsa.VerifyPKCS1v15(&sendersKey, crypto.SHA256, hash, sig)
+	if err != nil {
+		fmt.Println("NOT OK")
+		return false
+	} else {
+		fmt.Println("OK")
+		return true
 	}
 }
 
@@ -209,16 +248,16 @@ func handleBlocks() {
 			continue
 		}
 
-		var block = blockchain.Block{}
+		var block = blockchainDataModel.Block{}
 		json.Unmarshal(buffer[:n], &block)
 
 		// fmt.Println("Recieved:")
 		// fmt.Printf("prev hash: %s\n", fmt.Sprintf("%x", block.PreviousHash))
 		// fmt.Printf("curr hash: %s\n", fmt.Sprintf("%x", block.Hash))
 		rootLock.Lock()
-		blockchain.AppendBlock(&root, &block)
-		// if blockchain.AppendBlock(&root, &block) {
-		// 	// blockchain.removeUsedTransactions()
+		blockchainDataModel.AppendBlock(&root, &block)
+		// if blockchainDataModel.AppendBlock(&root, &block) {
+		// 	// blockchainDataModel.removeUsedTransactions()
 		// }
 		rootLock.Unlock()
 		//break search

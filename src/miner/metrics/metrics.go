@@ -2,7 +2,7 @@ package metrics
 
 import (
 	"encoding/json"
-	"main/blockchain"
+	"main/blockchainDataModel"
 	"os"
 )
 
@@ -31,7 +31,7 @@ func UpdateStats(stats Stats, filename string) {
 
 }
 
-func SaveBlockChain(root *blockchain.TreeNode, filename string) {
+func SaveBlockChain(root *blockchainDataModel.TreeNode, filename string) {
 	f, err := os.Create(filename)
 	check(err)
 	root.SaveToFile(f, 0)

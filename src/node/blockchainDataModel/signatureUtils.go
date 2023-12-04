@@ -1,4 +1,4 @@
-package main
+package blockchainDataModel
 
 import (
 	"crypto"
@@ -7,41 +7,21 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	"os"
 )
 
-func main() {
-	// Generate a private/public key pair
-	privateKey, publicKey := generateKeyPairAndReturn()
-
-	// Your data/message to be signed
-	message := []byte("Hello, this is a message to be signed")
-	// Create a new SHA256 hash
-
-	signature := sign(privateKey, message)
-	// Verify the signature using the public key
-	err := rsa.VerifyPKCS1v15(&publicKey, crypto.SHA256, returnHash(message), signature)
-	if err != nil {
-		fmt.Println("Signature verification failed:", err)
-		return
-	}
-
-	fmt.Println("Signature verified successfully!")
-}
-
-func returnHash(message []byte) []byte {
+func ReturnHash(message []byte) []byte {
 	hash := sha256.New()
 	hash.Write(message)
 	return hash.Sum(nil)
 }
 
-func sign(privateKey *rsa.PrivateKey, message []byte) []byte {
-	signature, _ := rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA256, returnHash(message))
+func Sign(privateKey *rsa.PrivateKey, message []byte) []byte {
+	signature, _ := rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA256, ReturnHash(message))
 	return signature
 }
 
-func generateKeyPairAndReturn() (*rsa.PrivateKey, rsa.PublicKey) {
+func GenerateKeyPairAndReturn(prefix string) (*rsa.PrivateKey, rsa.PublicKey) {
 	// Generate a new RSA key pair with a key size of 2048 bits
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
@@ -55,7 +35,7 @@ func generateKeyPairAndReturn() (*rsa.PrivateKey, rsa.PublicKey) {
 	}
 
 	// Write the private key to a file
-	privateKeyFile, _ := os.Create("private_key.pem")
+	privateKeyFile, _ := os.Create(prefix + "_private_key.pem")
 	defer privateKeyFile.Close()
 	pem.Encode(privateKeyFile, privateKeyPEM)
 
@@ -72,10 +52,19 @@ func generateKeyPairAndReturn() (*rsa.PrivateKey, rsa.PublicKey) {
 	}
 
 	// Write the public key to a file
-	publicKeyFile, _ := os.Create("public_key.pem")
+	publicKeyFile, _ := os.Create(prefix + "_public_key.pem")
 	defer publicKeyFile.Close()
 
 	pem.Encode(publicKeyFile, publicKeyPEM)
 
 	return privateKey, publicKey
+}
+
+func ReadKeyFile(filename string) ([]byte, error) {
+	// Read the contents of the file
+	keyData, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	return keyData, nil
 }

@@ -1,4 +1,4 @@
-package blockchain
+package blockchainDataModel
 
 import (
 	"bytes"
@@ -8,11 +8,13 @@ import (
 )
 
 type Transaction struct {
-	Sender           string
-	Reciever         string
-	Amount           string
-	Token            string
-	Sender_signature string
+	Number          int
+	Sender          string
+	Reciever        string
+	Amount          string
+	Token           string
+	TransactionHash string
+	SenderSignature string
 }
 
 type Block struct {
