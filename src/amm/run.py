@@ -16,6 +16,7 @@ counter = 0
 TRANS_MCAST_ADRR = os.getenv("TRANSACTION_BROADCAST").split(":")[0]
 TRANS_MCAST_PORT = os.getenv("TRANSACTION_BROADCAST").split(":")[1]
 
+ammAdrr = os.getenv("AMM_SERVER_ADDR")
 NODE_MCAST_ADRR = os.getenv("NODE_BROADCAST").split(":")[0]
 NODE_MCAST_PORT = os.getenv("NODE_BROADCAST").split(":")[1]
 MULTICAST_TTL = 1
@@ -69,6 +70,11 @@ class GetTransactions(BaseResource):
         self.setHeaders(request)
         # return json.dumps(amm.getTransactions()).encode('utf-8')
         return json.dumps([]).encode('utf-8')
+    
+class GetPublicKey(BaseResource):
+    def render_GET(self, request):
+        self.setHeaders(request)
+        return json.dumps(amm.pem_public).encode('utf-8')
 
     
 class PerformTransaction(BaseResource):
@@ -99,8 +105,9 @@ class MyRootResource(Resource):
         self.putChild(b"get-rates", GetRates())
         self.putChild(b"get-transactions", GetTransactions())
         self.putChild(b"transaction", PerformTransaction())
+        self.putChild(b"get-public-key", GetPublicKey())
 
-class MyMulticastUDPProtocol(DatagramProtocol):
+class NodeMulticastListener(DatagramProtocol):
     def startProtocol(self):
         # Specify the multicast address to listen to
         self.transport.joinGroup(NODE_MCAST_ADRR)
@@ -111,13 +118,37 @@ class MyMulticastUDPProtocol(DatagramProtocol):
         js = json.loads(data.decode('utf-8'))
 
         for trans in js["Transactions"]:
+            self.processTransaction(trans)
             print(trans)
+        # pastTransactions += js["Transactions"]
+        # Add your logic to process the multicast UDP data
+    
+    def processTransaction(transaction):
+        if transaction["reciever"] == ammAdrr:
+            returnTransaction = {}
+            returnTransaction["sender"] = ammAdrr
+            returnTransaction["reciever"] = transaction["sender"]
+            returnTransaction["reciever"] = transaction["sender"]
+            ###TODO
+
+class TransactionMulticastListener(DatagramProtocol):
+    def startProtocol(self):
+        # Specify the multicast address to listen to
+        self.transport.joinGroup(NODE_MCAST_ADRR)
+
+    def datagramReceived(self, data, addr):
+        # Handle the incoming multicast UDP datagram here
+        logger.info("Received multicast UDP data: %d [b] from %s", len(data), addr)
+        js = json.loads(data.decode('utf-8'))
+
+        # for trans in js["payments etccod"]:
+        #     print(trans)
         # pastTransactions += js["Transactions"]
         # Add your logic to process the multicast UDP data
         pass
 
-
-reactor.listenMulticast(int(NODE_MCAST_PORT), MyMulticastUDPProtocol())
+reactor.listenMulticast(int(NODE_MCAST_PORT), NodeMulticastListener())
+reactor.listenMulticast(int(TRANS_MCAST_PORT), TransactionMulticastListener())
 
 root = MyRootResource()
 site = Site(root)

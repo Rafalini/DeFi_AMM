@@ -1,5 +1,7 @@
 import json, math, hashlib, csv
 from datetime import datetime
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
 
 logFile = "log.csv"
 fieldnames = ['BTCamount', 'ETHamount', 'BTCvETHrate']
@@ -7,6 +9,26 @@ fieldnames = ['BTCamount', 'ETHamount', 'BTCvETHrate']
 class AmmClass:
  
     def __init__(self, filePath):
+
+        self.private_key = rsa.generate_private_key(
+            public_exponent=65537,  # Commonly used value for the public exponent
+            key_size=2048  # Size of the key in bits
+        )
+
+        self.public_key = self.private_key.public_key()
+
+        self.pem_private = self.private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption()
+        )
+
+        # Serialize the public key to PEM format
+        self.pem_public = self.public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+
         config_file = open(filePath)
         self.config = json.load(config_file)
         self.currencies = {}
@@ -23,6 +45,9 @@ class AmmClass:
             self.currencies[entry["short"]] = {"amount":entry["amount"], "minimal_part": entry["minimal_part"], "volume": 0}
             self.const_product_k *= entry["amount"]
             self.const_sum_k += entry["amount"]
+
+    def getPublicKey(self):
+        return self.public_key    
 
     def getCurrencies(self):
         # response = []

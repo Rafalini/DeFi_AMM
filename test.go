@@ -6,14 +6,55 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"net/http"
 	"os"
 )
 
+var (
+	privateKey *rsa.PrivateKey
+	publicKey  rsa.PublicKey
+)
+
+func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println(publicKey)
+	derBytes, err := x509.MarshalPKIXPublicKey(publicKey)
+	if err != nil {
+		fmt.Println("Error on marshal key: %w", err)
+		return
+	}
+
+	// Convert DER bytes to hex string
+	hexString := hex.EncodeToString(derBytes)
+
+	fmt.Fprintln(w, derBytes)
+	fmt.Println(derBytes)
+	fmt.Println("Responding to: /get-public-key")
+
+	// pemBytes := pem.EncodeToMemory(&pem.Block{
+	// 	Type:  "PUBLIC KEY",
+	// 	Bytes: x509.MarshalPKCS1PublicKey(&publicKey),
+	// })
+
+	// // Write the public key as a response
+	// w.Header().Set("Content-Type", "application/x-pem-file") // Set the appropriate content type
+	// w.Write(pemBytes)
+}
+
+func httpHandler() {
+	http.HandleFunc("/get-public-key", publicKeyHandler)
+	fmt.Println("Server is running: /get-public-key")
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		fmt.Println("Error starting server:", err)
+	}
+}
+
 func main() {
 	// Generate a private/public key pair
-	privateKey, publicKey := generateKeyPairAndReturn()
+	privateKey, publicKey = generateKeyPairAndReturn()
 
 	// Your data/message to be signed
 	message := []byte("Hello, this is a message to be signed")
@@ -26,8 +67,8 @@ func main() {
 		fmt.Println("Signature verification failed:", err)
 		return
 	}
-
 	fmt.Println("Signature verified successfully!")
+	httpHandler() //public key
 }
 
 func returnHash(message []byte) []byte {

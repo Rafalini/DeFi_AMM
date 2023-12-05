@@ -4,8 +4,10 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -21,18 +23,20 @@ import (
 )
 
 var (
-	lastBlock           blockchainDataModel.Block
-	miner               string
-	metricsFile         string
-	blockChainFile      string
-	localAddr           string
-	sigVerifyPort       string
-	root                blockchainDataModel.TreeNode
-	rootLock            sync.Mutex
-	miningLock          sync.Mutex
-	queueLock           sync.Mutex
-	breakHashSearch     = true
-	pendingTransactions []blockchainDataModel.Transaction
+	lastBlock                    blockchainDataModel.Block
+	miner                        string
+	metricsFile                  string
+	blockChainFile               string
+	localAddr                    string
+	sigVerifyPort                string
+	transactionHandlingMulticast string
+	blockHandlingMulticast       string
+	root                         blockchainDataModel.TreeNode
+	rootLock                     sync.Mutex
+	miningLock                   sync.Mutex
+	queueLock                    sync.Mutex
+	breakHashSearch              = true
+	pendingTransactions          []blockchainDataModel.Transaction
 )
 
 const (
@@ -53,6 +57,8 @@ func setLocalVariables() {
 	metricsFile = "logs/" + strings.Split(localAddr, ":")[0] + os.Getenv("METRICS_FILE")
 	blockChainFile = "logs/" + strings.Split(localAddr, ":")[0] + os.Getenv("BLOCK_CHAIN_FILE")
 	sigVerifyPort = os.Getenv("SIGNATURE_VERIFY_PORT")
+	transactionHandlingMulticast = os.Getenv("TRANSACTION_BROADCAST")
+	blockHandlingMulticast = os.Getenv("NODE_BROADCAST")
 	root = *blockchainDataModel.NewRoot()
 }
 
@@ -129,11 +135,8 @@ func searchHash() {
 }
 
 func broadcastNode(node blockchainDataModel.Block) {
-	broadcastAddress := "239.192.168.255"
-	port := 5006
-
 	// Create a UDP address
-	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", broadcastAddress, port))
+	udpAddr, err := net.ResolveUDPAddr("udp", blockHandlingMulticast)
 	if err != nil {
 		fmt.Println("Error resolving UDP address:", err)
 		os.Exit(1)
@@ -158,16 +161,14 @@ func broadcastNode(node blockchainDataModel.Block) {
 }
 
 func handleTransactions() {
-	multicastAddr := "239.192.168.255:5007"
-
-	addr, _ := net.ResolveUDPAddr("udp", multicastAddr)
+	addr, _ := net.ResolveUDPAddr("udp", transactionHandlingMulticast)
 	conn, _ := net.ListenMulticastUDP("udp", nil, addr)
 
 	defer conn.Close()
 
 	buffer := make([]byte, 1024)
 
-	fmt.Println("Listening for multicast transactions on", multicastAddr)
+	fmt.Println("Listening for multicast transactions on", transactionHandlingMulticast)
 
 	// Infinite loop to listen for multicast messages
 	for {
@@ -179,7 +180,7 @@ func handleTransactions() {
 
 		var transaction = blockchainDataModel.Transaction{}
 		json.Unmarshal(buffer[:n], &transaction)
-		fmt.Println(transaction)
+		// fmt.Println(transaction)
 		fmt.Printf("Got Trans: %d\n", n)
 		if validateSignature(transaction) {
 			queueLock.Lock()
@@ -203,42 +204,46 @@ func handleTransactions() {
 }
 
 func validateSignature(transaction blockchainDataModel.Transaction) bool {
-	url := transaction.Sender + ":" + sigVerifyPort + "/get-public-key"
+	urlStr := "http://" + transaction.Sender + ":" + sigVerifyPort + "/get-public-key"
 
-	// Make the GET request
-	fmt.Println(url)
-	response, err := http.Get(url)
+	response, err := http.Get(urlStr)
+
 	if err != nil {
 		fmt.Println("GET request failed:", err)
 		return false
 	}
+
 	defer response.Body.Close()
 
-	body, _ := ioutil.ReadAll(response.Body)
+	if response.StatusCode != http.StatusOK {
+		fmt.Println("Error:", response.Status)
+		return false
+	}
 
-	var sendersKey rsa.PublicKey
-	json.Unmarshal(body, &sendersKey)
-	hash, _ := hex.DecodeString(transaction.TransactionHash)
+	pemBytes, _ := ioutil.ReadAll(response.Body)
+	block, _ := pem.Decode(pemBytes)
+	pubKey, _ := x509.ParsePKCS1PublicKey(block.Bytes)
+
 	sig, _ := hex.DecodeString(transaction.SenderSignature)
+	hash, _ := hex.DecodeString(transaction.TransactionHash)
 
-	err = rsa.VerifyPKCS1v15(&sendersKey, crypto.SHA256, hash, sig)
+	err = rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hash, sig)
+
 	if err != nil {
-		fmt.Println("NOT OK")
 		return false
 	} else {
-		fmt.Println("OK")
 		return true
 	}
 }
 
 func handleBlocks() {
-	multicastAddr, _ := net.ResolveUDPAddr("udp", "239.192.168.255:5006")
+	multicastAddr, _ := net.ResolveUDPAddr("udp", blockHandlingMulticast)
 	conn, _ := net.ListenMulticastUDP("udp", nil, multicastAddr)
 	defer conn.Close()
 
 	buffer := make([]byte, 1024)
 
-	fmt.Println("Listening for multicast blocks on", multicastAddr)
+	fmt.Println("Listening for multicast blocks on", blockHandlingMulticast)
 
 	// Infinite loop to listen for multicast messages
 	for {

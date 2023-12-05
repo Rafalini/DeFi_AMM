@@ -1,7 +1,6 @@
 package blockchainDataModel
 
 import (
-	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -14,11 +13,6 @@ func ReturnHash(message []byte) []byte {
 	hash := sha256.New()
 	hash.Write(message)
 	return hash.Sum(nil)
-}
-
-func Sign(privateKey *rsa.PrivateKey, message []byte) []byte {
-	signature, _ := rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA256, ReturnHash(message))
-	return signature
 }
 
 func GenerateKeyPairAndReturn(prefix string) (*rsa.PrivateKey, rsa.PublicKey) {
