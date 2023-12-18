@@ -48,7 +48,6 @@ func GenerateKeyPairAndReturn(prefix string) (*rsa.PrivateKey, rsa.PublicKey) {
 	// Write the public key to a file
 	publicKeyFile, _ := os.Create(prefix + "_public_key.pem")
 	defer publicKeyFile.Close()
-
 	pem.Encode(publicKeyFile, publicKeyPEM)
 
 	return privateKey, publicKey

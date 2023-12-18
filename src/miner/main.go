@@ -179,7 +179,7 @@ func handleTransactions() {
 
 		var transaction = blockchainDataModel.Transaction{}
 		json.Unmarshal(buffer[:n], &transaction)
-		// fmt.Println(transaction)
+		fmt.Println(transaction)
 		// fmt.Printf("Got Transaction of size: %db\n", n)
 		fmt.Printf("Got Transaction from: %s\n", transaction.Sender)
 		if validateSignature(transaction) {

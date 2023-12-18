@@ -23,8 +23,8 @@ class BlockchainOrganizer:
                 self.blockchain.append(self.awaitingBlocks[maxBlockKey]["block"])
                 del self.awaitingBlocks[maxBlockKey]
 
-            print("adding: "+block["Hash"]+" bc len: "+str(len(self.blockchain)))
-            print(self.awaitingBlocks.keys())
+            print("adding: "+block["Hash"]+"  blockchain length: "+str(len(self.blockchain)))
+            # print(self.awaitingBlocks.keys())
 
 
         def maxBlock(self):

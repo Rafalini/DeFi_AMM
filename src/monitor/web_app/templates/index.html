@@ -115,30 +115,30 @@
 </script>
 <script>
     $(document).ready(function () {
-        const config = {
+        const amountConfig = {
             type: 'line',
             data: {
                 labels: Array(250).fill("00:00:00"),
-                datasets: [
-                    {
-                        label: "BTC",
-                        backgroundColor: 'rgb(255, 0, 85)',
-                        borderColor: 'rgb(255, 0, 85)',
-                        data: Array(250).fill(null),
-                        fill: false,
-                        tension: 0.1,
-                        pointRadius: 0
-                    },
-                    {
-                        label: "ETH",
-                        backgroundColor: 'rgb(0, 0, 255)',
-                        borderColor: 'rgb(0, 0, 255)',
-                        data: Array(250).fill(null),
-                        fill: false,
-                        tension: 0.1,
-                        pointRadius: 0
-                    }
-                ],
+                // datasets: [
+                //     {
+                //         label: "BTC",
+                //         backgroundColor: 'rgb(255, 0, 85)',
+                //         borderColor: 'rgb(255, 0, 85)',
+                //         data: Array(250).fill(null),
+                //         fill: false,
+                //         tension: 0.1,
+                //         pointRadius: 0
+                //     },
+                //     {
+                //         label: "ETH",
+                //         backgroundColor: 'rgb(0, 0, 255)',
+                //         borderColor: 'rgb(0, 0, 255)',
+                //         data: Array(250).fill(null),
+                //         fill: false,
+                //         tension: 0.1,
+                //         pointRadius: 0
+                //     }
+                // ],
             },
             options: {
                 responsive: true,
@@ -167,7 +167,7 @@
             }
         };
 
-        const config2 = {
+        const priceConfig = {
             type: 'line',
             data: {
                 labels: Array(250).fill("00:00:00"),
@@ -206,22 +206,20 @@
         const context2 = document.getElementById('canvas2').getContext('2d');
         const context = document.getElementById('canvas').getContext('2d');
 
-        const lineChart = new Chart(context, config);
-        const lineChart2 = new Chart(context2, config2);
+        const lineChart = new Chart(context, amountConfig);
+        const lineChart2 = new Chart(context2, priceConfig);
 
         const source = new EventSource("/chart-data");
 
         source.onmessage = function (event) {
             const data = JSON.parse(event.data);
-            // console.log(data)
-
-            data.prices.forEach((currency, index, arr) => {
-                const datasetIndex = config2.data.datasets.findIndex(object => object.label === currency.symbol);
+            data.prices.forEach(priceEntry => {
+                const datasetIndex = priceConfig.data.datasets.findIndex(object => object.label === priceEntry.symbol);
                 if (datasetIndex === -1) {
                     // 273
-                    config2.data.datasets.push(
+                    priceConfig.data.datasets.push(
                         {
-                            label: currency.symbol,
+                            label: priceEntry.symbol,
                             data: Array(250).fill(null),
                             borderColor: randomColor(),
                             backgroundColor: 'rgb(255, 0, 85)',
@@ -232,29 +230,48 @@
                         }
                     );
                 } else {
-                    config2.data.datasets[datasetIndex].data.push(currency.price)
-                }
-                if (index > 10){
-                    arr.length = index + 1;
+                    priceConfig.data.datasets[datasetIndex].data.push(priceEntry.usdprice)
                 }
             })
 
-            if (config.data.labels.length === 250) {
-                config.data.labels.shift();
-                config.data.datasets[0].data.shift();
-                config.data.datasets[1].data.shift();
+            data.amounts.forEach((amountEntry) => {
+                // console.log(amountEntry)
+                const datasetIndex = amountConfig.data.datasets.findIndex(object => object.label === amountEntry.symbol);
+                if (datasetIndex === -1) {
+                    amountConfig.data.datasets.push(
+                        {
+                            label: amountEntry.symbol,
+                            data: Array(250).fill(null),
+                            borderColor: randomColor(),
+                            backgroundColor: 'rgb(255, 0, 85)',
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            hidden: false
+                        }
+                    );
+                } else {
+                    amountConfig.data.datasets[datasetIndex].data.push(amountEntry.amount)
+                }
+            })
 
-                config2.data.labels.shift();
-                config2.data.datasets.forEach(dataset => {dataset.data.shift();})
+            if (amountConfig.data.labels.length === 250) {
+                amountConfig.data.labels.shift();
+                amountConfig.data.datasets.forEach(dataset => {dataset.data.shift();})
+
+                priceConfig.data.labels.shift();
+                priceConfig.data.datasets.forEach(dataset => {dataset.data.shift();})
             }
 
-            config.data.labels.push(data.time);
-            config.data.datasets[0].data.push(data.amounts.BTC);
-            config.data.datasets[1].data.push(data.amounts.ETH);
+            amountConfig.data.labels.push(data.time);
+            // amountConfig.data.datasets[0].data.push(data.amounts.BTC);
+            // amountConfig.data.datasets[1].data.push(data.amounts.ETH);
+            // amountConfig.data.datasets[2].data.push(data.amounts.XAUt);
+            // amountConfig.data.datasets[3].data.push(data.amounts.MKR);
 
-            config2.data.labels.push(data.time);
-            // config2.data.datasets[0].data.push(data.rates.ETH);
-            // config2.data.datasets[1].data.push(data.rates.BTC);
+            priceConfig.data.labels.push(data.time);
+            // priceConfig.data.datasets[0].data.push(data.rates.ETH);
+            // priceConfig.data.datasets[1].data.push(data.rates.BTC);
             lineChart.update();
             lineChart2.update();
 
@@ -269,37 +286,36 @@ $(document).ready(function () {
     const source = new EventSource("/changes-data");
     source.onmessage = function (event) {
             const data = JSON.parse(event.data);
-            console.log('elo')
-            data.forEach((entry) => {
+            // data.forEach((entry) => {
 
-                var vol = document.getElementById(entry.currency+'-oracle-volume-id');
-                var volumechg = document.getElementById(entry.currency+'-oracle-volume-change-id');
-                var price = document.getElementById(entry.currency+'-oracle-price-id');
-                var pricechg = document.getElementById(entry.currency+'-oracle-price-change-id');
+            //     var vol = document.getElementById(entry.currency+'-oracle-volume-id');
+            //     var volumechg = document.getElementById(entry.currency+'-oracle-volume-change-id');
+            //     var price = document.getElementById(entry.currency+'-oracle-price-id');
+            //     var pricechg = document.getElementById(entry.currency+'-oracle-price-change-id');
 
-                vol.innerHTML = entry.volume;
-                price.innerHTML = entry.price;
+            //     vol.innerHTML = entry.volume;
+            //     price.innerHTML = entry.price;
 
-                if (parseInt(entry.change) > 0.0000000001) {
-                  pricechg.classList.remove('red-percentage');
-                  pricechg.classList.add('green-percentage');
-                  pricechg.innerHTML = "+"+entry.change+"%";
-                } else {
-                  pricechg.classList.remove('green-percentage');
-                  pricechg.classList.add('red-percentage');
-                  pricechg.innerHTML = entry.change+"%";
-                }
+            //     if (parseInt(entry.change) > 0.0000000001) {
+            //       pricechg.classList.remove('red-percentage');
+            //       pricechg.classList.add('green-percentage');
+            //       pricechg.innerHTML = "+"+entry.change+"%";
+            //     } else {
+            //       pricechg.classList.remove('green-percentage');
+            //       pricechg.classList.add('red-percentage');
+            //       pricechg.innerHTML = entry.change+"%";
+            //     }
 
-                if (parseInt(entry.volumeChange) > 0.0000000001) {
-                  volumechg.classList.remove('red-percentage');
-                  volumechg.classList.add('green-percentage');
-                  volumechg.innerHTML = "+"+entry.volumeChange+"%";
-                } else {
-                  volumechg.classList.remove('green-percentage');
-                  volumechg.classList.add('red-percentage');
-                  volumechg.innerHTML = entry.volumeChange+"%";
-                }
-            })
+            //     if (parseInt(entry.volumeChange) > 0.0000000001) {
+            //       volumechg.classList.remove('red-percentage');
+            //       volumechg.classList.add('green-percentage');
+            //       volumechg.innerHTML = "+"+entry.volumeChange+"%";
+            //     } else {
+            //       volumechg.classList.remove('green-percentage');
+            //       volumechg.classList.add('red-percentage');
+            //       volumechg.innerHTML = entry.volumeChange+"%";
+            //     }
+            // })
         }
     });
 

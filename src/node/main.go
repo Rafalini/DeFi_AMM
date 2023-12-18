@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"main/blockchainDataModel"
 	"math/rand"
@@ -38,6 +39,8 @@ func setLocalVariables() {
 	balanceMap = make(map[string]float64)
 	balanceMap["BTC"] = 200
 	balanceMap["ETH"] = 200
+	balanceMap["XAUt"] = 200
+	balanceMap["MKR"] = 200
 
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
@@ -51,6 +54,44 @@ func setLocalVariables() {
 	privateKey, publicKey = blockchainDataModel.GenerateKeyPairAndReturn(localAddr)
 	sigVerifyPort = os.Getenv("SIGNATURE_VERIFY_PORT")
 	transactionHandlingMulticast = os.Getenv("TRANSACTION_BROADCAST")
+}
+
+func getPrices() interface{} {
+	url := ammAdress + "/get-currencies" // Replace with your API endpoint URL
+
+	// Make the GET request
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println("Error making GET request:", err)
+		return nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Unexpected status code:", resp.StatusCode)
+		return nil
+	}
+
+	// Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error reading response body:", err)
+		return nil
+	}
+
+	var data map[string]interface{}
+
+	// Unmarshal the JSON into the map
+	if err := json.Unmarshal(body, &data); err != nil {
+		fmt.Println("Error unmarshalling JSON:", err)
+		return nil
+	}
+
+	fmt.Println("Received data:")
+	for key, value := range data {
+		fmt.Printf("%s: %v\n", key, value)
+	}
+	return data
 }
 
 func handleTransactions() {
@@ -75,8 +116,7 @@ func handleTransactions() {
 		json.Unmarshal(buffer[:n], &transaction)
 
 		if !hasTransactionBeenUsed(transaction.TransactionHash) && transaction.Reciever == localAddr {
-			fmt.Printf("Balancing Trans: %d ", n)
-			fmt.Println(transaction.Token + " " + transaction.Amount)
+			fmt.Printf("Recieved transaction: " + transaction.Token + " " + transaction.Amount)
 			val, _ := strconv.ParseFloat(transaction.Amount, 64)
 			balanceMap[transaction.Token] += val
 			recievedTransactionHashes = append(recievedTransactionHashes, transaction.TransactionHash)
@@ -145,7 +185,7 @@ func trade() {
 		newTransaction.Amount = fmt.Sprintf("%f", amount)
 		newTransaction.Token = token
 		newTransaction.Metadata.ExchangeToken = exchangeTokens[0]
-		newTransaction.Metadata.MaxSlippage = fmt.Sprintf("%f", 0.5)
+		newTransaction.Metadata.MaxSlippage = fmt.Sprintf("%f", 100000.0)
 		newTransaction.Metadata.ExchangeRate = fmt.Sprintf("%f", 1.0)
 
 		transactionbytes, _ := json.Marshal(newTransaction)
@@ -196,6 +236,7 @@ func httpHandler() {
 }
 
 func main() {
+	getPrices()
 	setLocalVariables()
 	go httpHandler() //public key
 	go handleTransactions()

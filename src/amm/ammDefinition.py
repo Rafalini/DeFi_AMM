@@ -36,23 +36,19 @@ class AmmClass:
         self.transactions = []
         self.pendingTransactions = []
         self.transactionCacheLimit = 8
-        self.const_product_k = 1
-        self.const_sum_k = 0
         f = open(logFile, "w")
         f.write("BTCamount,ETHamount,BTCvETHrate")
         f.close()
 
         for entry in self.config["currencies"]:
             self.currencies[entry["short"]] = {"amount":entry["amount"], "minimal_part": entry["minimal_part"], "volume": 0}
-            self.const_product_k *= entry["amount"]
-            self.const_sum_k += entry["amount"]
 
         self.blockchain = BlockchainOrganizer()
 
     def getCurrencies(self):
-        return self.currencies.copy()
+        return self.currencies
     
-    def getAmounts(self):
+    def getAmountsDeprecated(self):
         self.saveStep()    
         amounts = {}
 
@@ -78,26 +74,37 @@ class AmmClass:
                 amounts[currency] = self.currencies[currency]["amount"] - ethSum
         return amounts
     
+    def getAmounts(self):
+        self.saveStep()    
+        amounts = []
+
+        for currency in self.currencies:
+            amounts.append({"symbol":currency,"amount":self.currencies[currency]["amount"]})
+        return amounts
+    
     def requestedByConstantProduct(self, amount, token, exchangeToken):
         # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
+        constK = self.currencies[exchangeToken]["amount"] * self.currencies[token]["amount"]
+
         deimalRoundingDigits = abs(round(math.log10(self.currencies[token]["minimal_part"])))
         requested = self.currencies[exchangeToken]["amount"] - round(
-            self.const_product_k / (amount + self.currencies[token]["amount"]), deimalRoundingDigits)
+            constK / (amount + self.currencies[token]["amount"])
+            , deimalRoundingDigits)
         return requested
     
-    def requestedByConstantSum(self, amount, token, exchangeToken):
-        # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
-        deimalRoundingDigits = abs(round(math.log10(self.currencies[request.json["to"]]["minimal_part"])))
-        requested = self.currencies[exchangeToken]["amount"] - round(
-            self.const_sum_k - (amount + self.currencies[token]["amount"]), deimalRoundingDigits)
-        return requested
+    # def requestedByConstantSum(self, amount, token, exchangeToken):
+    #     # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
+    #     deimalRoundingDigits = abs(round(math.log10(self.currencies[exchangeToken]["minimal_part"])))
+    #     requested = self.currencies[exchangeToken]["amount"] - round(
+    #         self.const_sum_k - (amount + self.currencies[token]["amount"]), deimalRoundingDigits)
+    #     return requested
 
-    def proportional(self, amount, token, exchangeToken):
-        # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
-        deimalRoundingDigits = abs(round(math.log10(self.currencies[request.json["to"]]["minimal_part"])))
-        factor = self.currencies[exchangeToken]["amount"] / self.currencies[token]["amount"]
-        requested = round(amount * factor, deimalRoundingDigits)
-        return requested
+    # def proportional(self, amount, token, exchangeToken):
+    #     # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
+    #     deimalRoundingDigits = abs(round(math.log10(self.currencies[exchangeToken]["minimal_part"])))
+    #     factor = self.currencies[exchangeToken]["amount"] / self.currencies[token]["amount"]
+    #     requested = round(amount * factor, deimalRoundingDigits)
+    #     return requested
     
 
     def getRates(self):
@@ -115,7 +122,6 @@ class AmmClass:
     
 
     def performTransaction(self, request):
-        print(request)
         amount = float(request["Amount"])
         token = request["Token"]
         exchangeToken = request["Metadata"]["ExchangeToken"]
@@ -124,6 +130,9 @@ class AmmClass:
             maxSlippage = float(request["Metadata"]["MaxSlippage"])
         # requested = self.requestedByConstantProduct(request, self.const_product_k)
         requested = self.requestedByConstantProduct(amount, token, exchangeToken)
+
+        print("Exchange: "+token+" for "+exchangeToken+" ::: "+str(amount)+" for "+str(requested))
+
         returnTransaction = {}
         returnTransaction["TimeStamp"] = datetime.now().isoformat('T')
         returnTransaction["Sender"] = request["Reciever"]
@@ -153,6 +162,7 @@ class AmmClass:
             padding.PKCS1v15(),
             hashes.SHA256())
         returnTransaction["SenderSignature"] = binascii.hexlify(signature).decode('utf-8')
+        print(self.currencies)
         return returnTransaction
 
 
