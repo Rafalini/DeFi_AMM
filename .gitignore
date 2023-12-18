@@ -4,6 +4,7 @@ amm/web_app/.idea
 /.ipynb_checkpoints
 /miner/logs
 /.idea/
+/.vscode/
 plan
 .vscode/settings.json
 monitor/web_app/__pycache__/__init__.cpython-311.pyc

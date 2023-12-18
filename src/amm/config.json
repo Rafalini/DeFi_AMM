@@ -1,16 +1,28 @@
 {
-    "currencies" : [
+    "currencies": [
         {
-             "name": "bitcoin",
-             "short": "BTC",
-             "amount": 30000,
-             "minimal_part": 0.001
+            "name": "bitcoin",
+            "short": "BTC",
+            "amount": 30000,
+            "minimal_part": 0.001
         },
         {
             "name": "etherium",
             "short": "ETH",
             "amount": 30000,
             "minimal_part": 0.001
-       }
+        },
+        {
+            "name": "gremin",
+            "short": "GTD",
+            "amount": 30000,
+            "minimal_part": 0.001
+        },
+        {
+            "name": "panckin",
+            "short": "PCK",
+            "amount": 30000,
+            "minimal_part": 0.001
+        }
     ]
 }

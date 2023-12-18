@@ -7,17 +7,25 @@ import (
 	"strings"
 )
 
+type Metadata struct {
+	ExchangeToken string
+	MaxSlippage   string
+	ExchangeRate  string
+}
+
 type Transaction struct {
-	Number          int
+	TimeStamp       string
 	Sender          string
 	Reciever        string
 	Amount          string
 	Token           string
+	Metadata        Metadata
 	TransactionHash string
 	SenderSignature string
 }
 
 type Block struct {
+	TimeStamp    string
 	Miner        string
 	Hash         []byte
 	PreviousHash []byte

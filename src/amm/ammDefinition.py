@@ -1,13 +1,14 @@
-import json, math, hashlib, csv
+import json, math, hashlib, csv, binascii
 from datetime import datetime
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import serialization, hashes
+from blockchainAdapter import BlockchainOrganizer
 
 logFile = "log.csv"
 fieldnames = ['BTCamount', 'ETHamount', 'BTCvETHrate']
 
 class AmmClass:
- 
+
     def __init__(self, filePath):
 
         self.private_key = rsa.generate_private_key(
@@ -46,14 +47,9 @@ class AmmClass:
             self.const_product_k *= entry["amount"]
             self.const_sum_k += entry["amount"]
 
-    def getPublicKey(self):
-        return self.public_key    
+        self.blockchain = BlockchainOrganizer()
 
     def getCurrencies(self):
-        # response = []
-        # for entry in self.currencies:
-        #     print(entry)
-        #     response.append({"currency":entry, "data":self.currencies[entry]})
         return self.currencies.copy()
     
     def getAmounts(self):
@@ -82,25 +78,25 @@ class AmmClass:
                 amounts[currency] = self.currencies[currency]["amount"] - ethSum
         return amounts
     
-    def requestedByConstantProduct(self, request, const_k):
+    def requestedByConstantProduct(self, amount, token, exchangeToken):
         # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
-        deimalRoundingDigits = abs(round(math.log10(self.currencies[request.json["to"]]["minimal_part"])))
-        requested = self.currencies[request.json["to"]]["amount"] - round(
-            const_k / (request.json["amount"] + self.currencies[request.json["from"]]["amount"]), deimalRoundingDigits)
+        deimalRoundingDigits = abs(round(math.log10(self.currencies[token]["minimal_part"])))
+        requested = self.currencies[exchangeToken]["amount"] - round(
+            self.const_product_k / (amount + self.currencies[token]["amount"]), deimalRoundingDigits)
         return requested
     
-    def requestedByConstantSum(self, request, const_k):
+    def requestedByConstantSum(self, amount, token, exchangeToken):
         # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
         deimalRoundingDigits = abs(round(math.log10(self.currencies[request.json["to"]]["minimal_part"])))
-        requested = self.currencies[request.json["to"]]["amount"] - round(
-            const_k - (request.json["amount"] + self.currencies[request.json["from"]]["amount"]), deimalRoundingDigits)
+        requested = self.currencies[exchangeToken]["amount"] - round(
+            self.const_sum_k - (amount + self.currencies[token]["amount"]), deimalRoundingDigits)
         return requested
 
-    def proportional(self, request):
+    def proportional(self, amount, token, exchangeToken):
         # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
         deimalRoundingDigits = abs(round(math.log10(self.currencies[request.json["to"]]["minimal_part"])))
-        factor = self.currencies[request.json["to"]]["amount"] / self.currencies[request.json["from"]]["amount"]
-        requested = round(request.json["amount"] * factor, deimalRoundingDigits)
+        factor = self.currencies[exchangeToken]["amount"] / self.currencies[token]["amount"]
+        requested = round(amount * factor, deimalRoundingDigits)
         return requested
     
 
@@ -117,46 +113,48 @@ class AmmClass:
             response[currency] = rates
         return response
     
-    # def saveRates(self):
-    #     file = "rates.json"
-    
 
     def performTransaction(self, request):
-        requested = self.requestedByConstantProduct(request, self.const_product_k)
+        print(request)
+        amount = float(request["Amount"])
+        token = request["Token"]
+        exchangeToken = request["Metadata"]["ExchangeToken"]
+        if "Metadata" in request:
+            exchangeRate = float(request["Metadata"]["ExchangeRate"])
+            maxSlippage = float(request["Metadata"]["MaxSlippage"])
+        # requested = self.requestedByConstantProduct(request, self.const_product_k)
+        requested = self.requestedByConstantProduct(amount, token, exchangeToken)
+        returnTransaction = {}
+        returnTransaction["TimeStamp"] = datetime.now().isoformat('T')
+        returnTransaction["Sender"] = request["Reciever"]
+        returnTransaction["Reciever"] = request["Sender"]
 
-        if self.currencies[request.json["to"]]["amount"] - requested > 0:
+        newRate = requested / amount
+        if "Metadata" in request and newRate / exchangeRate <= maxSlippage:
+            #perform
+            self.currencies[token]["amount"] += amount
+            self.currencies[token]["volume"] += amount
+            self.currencies[exchangeToken]["amount"] -= requested
+            self.currencies[exchangeToken]["volume"] += requested
 
-            self.currencies[request.json["from"]]["amount"] += request.json["amount"]
-            self.currencies[request.json["from"]]["volume"] += abs(request.json["amount"])
-            self.currencies[request.json["to"]]["amount"] -= requested
-            self.currencies[request.json["to"]]["volume"] += abs(requested)
+            self.transactions.insert(0, {"peer": request["Sender"], "from": token, "to": exchangeToken, "amountFrom": amount, "amountTo": requested})
 
-            # transactions = addTransaction(transactions, request.getClientAddress().host+" traded "+request.json["to"]["amount"] +" "+request.json["to"], transactionCacheLimit)
-            self.transactions.insert(0,
-                                {"peer": request.getClientAddress().host, "from": request.json["from"], "to": request.json["to"],
-                                "amountFrom": request.json["amount"], "amountTo": requested})
-            # transactions.insert(0, request.getClientAddress().host+" traded "+str(round(requested,3)) +" "+str(request.json["to"])+"\n")
-            # if len(self.transactions) == self.transactionCacheLimit:
-                # self.transactions.pop(len(self.transactions) - 1)
-                # self.transactions.pop()
-
-            blockChainTransaction1={}
-            blockChainTransaction1["sender"] = request.json["client"]
-            blockChainTransaction1["reciever"] = "0xAMM"
-            blockChainTransaction1["amount"] = request.json["amount"]
-            blockChainTransaction1["token"] = request.json["from"]
-            blockChainTransaction1["sender_signature"] = hashlib.sha256(str(blockChainTransaction1).encode('UTF-8')).hexdigest()
-            blockChainTransaction2 = {}
-            blockChainTransaction2["sender"] = "0xAMM"
-            blockChainTransaction2["reciever"] = request.json["client"]
-            blockChainTransaction2["amount"] = requested
-            blockChainTransaction2["token"] = request.json["to"]
-            blockChainTransaction2["sender_signature"] = hashlib.sha256(str(blockChainTransaction1).encode('UTF-8')).hexdigest()
-            self.pendingTransactions.append(blockChainTransaction1)
-            self.pendingTransactions.append(blockChainTransaction2)
-            return [blockChainTransaction1, blockChainTransaction2]
+            returnTransaction["Amount"] = str(requested)
+            returnTransaction["Token"] = exchangeToken
         else:
-            return []
+            #reject
+            returnTransaction["Amount"] = str(amount)
+            returnTransaction["Token"] = token
+
+        transactionHash = hashlib.sha256(str(returnTransaction).encode('UTF-8')).digest()
+        returnTransaction["TransactionHash"] = binascii.hexlify(transactionHash).decode('utf-8')
+        signature = self.private_key.sign(
+            transactionHash,
+            padding.PKCS1v15(),
+            hashes.SHA256())
+        returnTransaction["SenderSignature"] = binascii.hexlify(signature).decode('utf-8')
+        return returnTransaction
+
 
     def lastTransactionChanges(self):
         changes = []
@@ -180,9 +178,7 @@ class AmmClass:
             changes.append({"currency":transaction["to"], "volume": round(self.currencies[transaction["to"]]["volume"],3), "volumeChange": round(volumeChange*100,5),
                             "price": round(price,3), "change": round(priceChange*100, 3)})
         return changes
-    
-    def getTransactions(self):
-        return self.transactions
+
 
     def getCurrentAmounts(self):
         amounts = {}
@@ -203,3 +199,15 @@ class AmmClass:
             data = {fieldnames[0]: ls["BTC"], fieldnames[1]:ls["ETH"], fieldnames[2]: rates["BTC"]["ETH"]}  # Replace with your data
             writer.writerow(data)
             csvfile.close()
+
+    def addBlock(self, block):
+        self.blockchain.addBlock(block)
+
+    def getValidBlock(self):
+        return self.blockchain.getValidBlock()
+
+    def getAwaitingBlocks(self):
+        return self.blockchain.getAwaitingBlocks()
+    
+    def getValidTransactions(self):
+        return self.blockchain.getValidTransactions()

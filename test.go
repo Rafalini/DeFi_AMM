@@ -2,121 +2,51 @@ package main
 
 import (
 	"crypto"
-	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"net/http"
-	"os"
 )
 
 var (
-	privateKey *rsa.PrivateKey
-	publicKey  rsa.PublicKey
+	balanceMap map[string]float64
 )
 
-func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(publicKey)
-	derBytes, err := x509.MarshalPKIXPublicKey(publicKey)
-	if err != nil {
-		fmt.Println("Error on marshal key: %w", err)
-		return
-	}
-
-	// Convert DER bytes to hex string
-	hexString := hex.EncodeToString(derBytes)
-
-	fmt.Fprintln(w, derBytes)
-	fmt.Println(derBytes)
-	fmt.Println("Responding to: /get-public-key")
-
-	// pemBytes := pem.EncodeToMemory(&pem.Block{
-	// 	Type:  "PUBLIC KEY",
-	// 	Bytes: x509.MarshalPKCS1PublicKey(&publicKey),
-	// })
-
-	// // Write the public key as a response
-	// w.Header().Set("Content-Type", "application/x-pem-file") // Set the appropriate content type
-	// w.Write(pemBytes)
-}
-
-func httpHandler() {
-	http.HandleFunc("/get-public-key", publicKeyHandler)
-	fmt.Println("Server is running: /get-public-key")
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		fmt.Println("Error starting server:", err)
-	}
-}
-
 func main() {
-	// Generate a private/public key pair
-	privateKey, publicKey = generateKeyPairAndReturn()
+	signHex := "2fc8ff5146fe57d7bfc9f7b9af486737711ad907be9f27bc21d8a4f16cee4b6239fca993121e44d7c67de34a421d43cb1f981bd69ecd3d0c3e30233524094ddfd7e82aae69371c0660f4b978dfbdd1846b41993943e82dc2079758d8c33363bfc8b8004e397d4f8bc51735b2705c4f98c51fb7013c3d06372123067006c75e2aa214d139b19fa463bd362f78f7eab273177b8ad94a03c7a5a8aad14989238d4320a197d6bc241bb18a54c00260b6efb4b1269b5eace38327f806f380980080840fe1fe72388a3e8dc144ec275894ec30d0a199cf12c3495d92317a7a6f8c8bffb3e2798733f43cdc9a0796838692d1e0f14bc9d42b01e503f79720a52302ee2e"
+	hashHex := "9e1d4d1f29867c0e59604a8f2d150d9d683cac10297e22343de2d364c1c7cee5"
+	pemPublicKey := "2d2d2d2d2d424547494e205055424c4943204b45592d2d2d2d2d0a4d494942496a414e42676b71686b6947397730424151454641414f43415138414d49494243674b43415145416c4a67527131507446487059494146775459646d0a355048674c6252506868757278506f58456c6b6456636f5652366c595a69477377566866362b5731736d67746352666e6a5251547a4e3867646b2f4545456a4d0a3673514c4f644f367a3535715243396e6d2f4f4b6774507a7836746c746559785857464a504f4532442b6c466657505652427576796e7a582f654e4a525461730a77717a6963302f4b4b375138672b615933574a325a30357336494f6f644f766e4c4b74717652564263463750556458536243504b504a4a51517a4f33486a6f350a582b6b34435843515a6866662f4463306b304a66574658613542586a3532432b4e346a352b465456306270393362704d5363374c53783067685a4c4c334e68490a5834484731636d467357646d6b4a2f624f4d777239346971382b4c4f5a732f6851335472336365597a4c336550584154456872574a727469466c3441574151370a55774944415141420a2d2d2d2d2d454e44205055424c4943204b45592d2d2d2d2d0a"
 
-	// Your data/message to be signed
-	message := []byte("Hello, this is a message to be signed")
-	// Create a new SHA256 hash
+	signature, _ := hex.DecodeString(signHex)
+	hash, _ := hex.DecodeString(hashHex)
+	pemBytes, _ := hex.DecodeString(pemPublicKey)
+	fmt.Printf("%s", pemBytes)
 
-	signature := sign(privateKey, message)
-	// Verify the signature using the public key
-	err := rsa.VerifyPKCS1v15(&publicKey, crypto.SHA256, returnHash(message), signature)
-	if err != nil {
-		fmt.Println("Signature verification failed:", err)
+	// Parse PEM bytes into a *rsa.PublicKey
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		fmt.Println("Failed to decode PEM block")
 		return
 	}
-	fmt.Println("Signature verified successfully!")
-	httpHandler() //public key
-}
 
-func returnHash(message []byte) []byte {
-	hash := sha256.New()
-	hash.Write(message)
-	return hash.Sum(nil)
-}
-
-func sign(privateKey *rsa.PrivateKey, message []byte) []byte {
-	signature, _ := rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA256, returnHash(message))
-	return signature
-}
-
-func generateKeyPairAndReturn() (*rsa.PrivateKey, rsa.PublicKey) {
-	// Generate a new RSA key pair with a key size of 2048 bits
-	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-
-	// Encode the private key to ASN.1 DER format
-	privateKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
-
-	// Create a PEM block for the private key
-	privateKeyPEM := &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: privateKeyBytes,
+	pubInterface, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		fmt.Println("Failed to parse public key:", err)
+		return
 	}
 
-	// Write the private key to a file
-	privateKeyFile, _ := os.Create("private_key.pem")
-	defer privateKeyFile.Close()
-	pem.Encode(privateKeyFile, privateKeyPEM)
+	// rsaPubKey, ok := pubInterface.(*rsa.PublicKey)
+	// if !ok {
+	// 	fmt.Println("Failed to cast public key to RSA")
+	// 	return
+	// }
 
-	// Extract the public key from the private key
-	publicKey := privateKey.PublicKey
-
-	// Marshal the public key to ASN.1 DER format
-	publicKeyBytes, _ := x509.MarshalPKIXPublicKey(&publicKey)
-
-	// Create a PEM block for the public key
-	publicKeyPEM := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: publicKeyBytes,
+	// Verify the signature using the public key and the hash
+	err = rsa.VerifyPKCS1v15(pubInterface, crypto.SHA256, hash, signature)
+	if err == nil {
+		fmt.Println("Signature is valid")
+	} else {
+		fmt.Println("Signature verification failed:", err)
 	}
-
-	// Write the public key to a file
-	publicKeyFile, _ := os.Create("public_key.pem")
-	defer publicKeyFile.Close()
-
-	pem.Encode(publicKeyFile, publicKeyPEM)
-
-	return privateKey, publicKey
 }

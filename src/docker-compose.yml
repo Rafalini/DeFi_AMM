@@ -15,6 +15,9 @@ services:
     build:
       context: ./monitor
       dockerfile: ./Dockerfile
+    depends_on:
+      - amm_service
+      - oracle_service
     environment:
     - PYTHONUNBUFFERED=1
     - FLASK_SERVER_PORT=5000
@@ -51,23 +54,23 @@ services:
     #   driver: "none"
 
 
-  # orcle_service:
-  #   image: oracle
-  #   build:
-  #     context: ./oracle
-  #     dockerfile: ./Dockerfile
-  #   environment:
-  #     - PYTHONUNBUFFERED=1
-  #     - FLASK_ORACLE_PORT=5000
-  #     - AMM_SERVER_ADDR=192.168.10.3
-  #     - AMM_SERVER_PORT=5000
-  #   ports:
-  #     - 5002:5000
-  #   networks:
-  #     crypto_net:
-  #       ipv4_address: 192.168.10.4
-  #   logging:
-  #     driver: "none"
+  oracle_service:
+    image: oracle
+    build:
+      context: ./oracle
+      dockerfile: ./Dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FLASK_ORACLE_PORT=5000
+      - AMM_SERVER_ADDR=192.168.10.3
+      - AMM_SERVER_PORT=5000
+    ports:
+      - 5002:5000
+    networks:
+      crypto_net:
+        ipv4_address: 192.168.10.4
+    logging:
+      driver: "none"
 
   
   node:
@@ -86,6 +89,8 @@ services:
       - SIGNATURE_VERIFY_PORT=5005
     networks:
       - crypto_net
+    ports:
+      - 5005:5005
     cpus: 0.2
     mem_limit: 128MB
 

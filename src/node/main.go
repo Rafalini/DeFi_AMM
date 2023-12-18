@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"main/blockchainDataModel"
+	"math/rand"
 	mrand "math/rand"
 	"net"
 	"net/http"
@@ -21,7 +22,7 @@ import (
 )
 
 var (
-	counter                      int
+	// counter                      int
 	balanceMap                   map[string]float64
 	sigVerifyPort                string
 	ammAdress                    string
@@ -29,7 +30,6 @@ var (
 	localAddr                    string
 	recievedTransactionHashes    []string
 	transactionHandlingMulticast string
-	blockHandlingMulticast       string
 	privateKey                   *rsa.PrivateKey
 	publicKey                    rsa.PublicKey
 )
@@ -51,7 +51,6 @@ func setLocalVariables() {
 	privateKey, publicKey = blockchainDataModel.GenerateKeyPairAndReturn(localAddr)
 	sigVerifyPort = os.Getenv("SIGNATURE_VERIFY_PORT")
 	transactionHandlingMulticast = os.Getenv("TRANSACTION_BROADCAST")
-	blockHandlingMulticast = os.Getenv("NODE_BROADCAST")
 }
 
 func handleTransactions() {
@@ -74,10 +73,10 @@ func handleTransactions() {
 
 		var transaction = blockchainDataModel.Transaction{}
 		json.Unmarshal(buffer[:n], &transaction)
-		// fmt.Println(transaction)
-		fmt.Printf("Got Trans: %d\n", n)
 
-		if !hasTransactionBeenUsed(transaction.TransactionHash) {
+		if !hasTransactionBeenUsed(transaction.TransactionHash) && transaction.Reciever == localAddr {
+			fmt.Printf("Balancing Trans: %d ", n)
+			fmt.Println(transaction.Token + " " + transaction.Amount)
 			val, _ := strconv.ParseFloat(transaction.Amount, 64)
 			balanceMap[transaction.Token] += val
 			recievedTransactionHashes = append(recievedTransactionHashes, transaction.TransactionHash)
@@ -93,27 +92,6 @@ func hasTransactionBeenUsed(target string) bool {
 	}
 	return false // Target string not found in the list
 }
-
-// func getCurrencies() ([]string, error) {
-// 	url := "http://" + ammAdress + "/get-currencies"
-
-// 	// Send the GET request
-// 	response, err := http.Get(url)
-// 	if err != nil {
-// 		log.Fatal("GET request failed:", err)
-// 	}
-// 	defer response.Body.Close()
-
-// 	// Read the response body
-// 	body, err := io.ReadAll(response.Body)
-// 	// Print the response status code and body
-// 	fmt.Println("Response Status:", response.Status)
-// 	fmt.Println("Response Body:", string(body))
-
-// 	var currencies []string
-// 	err = json.Unmarshal(body, &currencies)
-// 	return currencies, err
-// }
 
 func broadcastTransaction(transaction blockchainDataModel.Transaction) {
 	udpAddr, err := net.ResolveUDPAddr("udp", transactionBroadcastAddr)
@@ -152,18 +130,23 @@ func findMaxBalance() (string, float64) {
 
 func trade() {
 	for {
-		counter += 1
 		min := 1.0
 		token, max := findMaxBalance()
+		exchangeTokens := getKeysExcept(token)
+
 		amount := min + mrand.Float64()*(max-min)
 		balanceMap[token] -= amount
 
 		var newTransaction = blockchainDataModel.Transaction{}
 		newTransaction.Sender = localAddr
 		newTransaction.Reciever = ammAdress
-		newTransaction.Number = counter
+		var timeStamp = time.Now()
+		newTransaction.TimeStamp = timeStamp.Format("2006-01-02T15:04:05.999999999Z07:00")
 		newTransaction.Amount = fmt.Sprintf("%f", amount)
 		newTransaction.Token = token
+		newTransaction.Metadata.ExchangeToken = exchangeTokens[0]
+		newTransaction.Metadata.MaxSlippage = fmt.Sprintf("%f", 0.5)
+		newTransaction.Metadata.ExchangeRate = fmt.Sprintf("%f", 1.0)
 
 		transactionbytes, _ := json.Marshal(newTransaction)
 		transactionhash := blockchainDataModel.ReturnHash(transactionbytes)
@@ -177,13 +160,28 @@ func trade() {
 	}
 }
 
+func getKeysExcept(token string) []string {
+	keys := make([]string, 0, len(balanceMap)-1)
+	for key := range balanceMap {
+		if key != token {
+			keys = append(keys, key)
+		}
+	}
+	shuffleKeys(keys)
+	return keys
+}
+
+func shuffleKeys(keys []string) {
+	rand.Shuffle(len(keys), func(i, j int) {
+		keys[i], keys[j] = keys[j], keys[i]
+	})
+}
+
 func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	pemBytes := pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: x509.MarshalPKCS1PublicKey(&publicKey),
 	})
-
-	// Write the public key as a response
 	w.Header().Set("Content-Type", "application/x-pem-file") // Set the appropriate content type
 	w.Write(pemBytes)
 }

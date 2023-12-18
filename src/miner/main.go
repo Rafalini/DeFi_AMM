@@ -42,6 +42,7 @@ var (
 const (
 	BlockType       string = "block"
 	TransactionType        = "transaction"
+	blockSize              = 1
 )
 
 func setLocalVariables() {
@@ -82,7 +83,7 @@ func printHash(hash []byte) {
 }
 
 func searchHash() {
-	if len(pendingTransactions) < 3 {
+	if len(pendingTransactions) < blockSize {
 		return
 	}
 
@@ -91,8 +92,8 @@ func searchHash() {
 	block.PreviousHash = blockchainDataModel.GetDeepestLeave(&root).Block.Hash
 
 	queueLock.Lock()
-	block.Transactions = pendingTransactions[:3]
-	pendingTransactions = pendingTransactions[3:]
+	block.Transactions = pendingTransactions[:blockSize]
+	pendingTransactions = pendingTransactions[blockSize:]
 	queueLock.Unlock()
 
 	h := sha256.New()
@@ -113,24 +114,22 @@ func searchHash() {
 		}
 
 	}
+	var timeStamp = time.Now()
+	block.TimeStamp = timeStamp.Format("2006-01-02T15:04:05.999999999Z07:00")
 	lastBlock = block
 	var stats metrics.Stats
 	stats.Attempts = block.Nonce - initialVal
 	stats.Times = 1
 	metrics.UpdateStats(stats, metricsFile)
 	metrics.SaveBlockChain(&root, blockChainFile)
-
 	// printBlock(block)
 
 	rootLock.Lock()
 	blockchainDataModel.AppendBlock(&root, &block)
-	// fmt.Println("Found:")
-	// fmt.Printf("prev hash: %s\n", fmt.Sprintf("%x", block.PreviousHash))
-	// fmt.Printf("curr hash: %s\n", fmt.Sprintf("%x", block.Hash))
-
 	rootLock.Unlock()
+
 	broadcastNode(block)
-	n := 1 + rand.Intn(1)
+	n := 1 + rand.Intn(4)
 	time.Sleep(time.Duration(n) * time.Second)
 }
 
@@ -181,7 +180,8 @@ func handleTransactions() {
 		var transaction = blockchainDataModel.Transaction{}
 		json.Unmarshal(buffer[:n], &transaction)
 		// fmt.Println(transaction)
-		fmt.Printf("Got Trans: %d\n", n)
+		// fmt.Printf("Got Transaction of size: %db\n", n)
+		fmt.Printf("Got Transaction from: %s\n", transaction.Sender)
 		if validateSignature(transaction) {
 			queueLock.Lock()
 			var onList = false
@@ -194,16 +194,18 @@ func handleTransactions() {
 			}
 			if !onList {
 				pendingTransactions = append(pendingTransactions, transaction)
-				fmt.Println("Adding trans")
+				// fmt.Println("Adding trans")
 			}
 			queueLock.Unlock()
-
 			searchHash()
 		}
 	}
 }
 
 func validateSignature(transaction blockchainDataModel.Transaction) bool {
+	if transaction.Sender == "192.168.10.3" {
+		return true
+	}
 	urlStr := "http://" + transaction.Sender + ":" + sigVerifyPort + "/get-public-key"
 
 	response, err := http.Get(urlStr)
@@ -220,9 +222,17 @@ func validateSignature(transaction blockchainDataModel.Transaction) bool {
 		return false
 	}
 
-	pemBytes, _ := ioutil.ReadAll(response.Body)
+	pemBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println("pemBytes failed:", err)
+		return false
+	}
 	block, _ := pem.Decode(pemBytes)
-	pubKey, _ := x509.ParsePKCS1PublicKey(block.Bytes)
+	pubKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		fmt.Println("pubKey failed:", err)
+		return false
+	}
 
 	sig, _ := hex.DecodeString(transaction.SenderSignature)
 	hash, _ := hex.DecodeString(transaction.TransactionHash)
@@ -255,17 +265,9 @@ func handleBlocks() {
 
 		var block = blockchainDataModel.Block{}
 		json.Unmarshal(buffer[:n], &block)
-
-		// fmt.Println("Recieved:")
-		// fmt.Printf("prev hash: %s\n", fmt.Sprintf("%x", block.PreviousHash))
-		// fmt.Printf("curr hash: %s\n", fmt.Sprintf("%x", block.Hash))
 		rootLock.Lock()
 		blockchainDataModel.AppendBlock(&root, &block)
-		// if blockchainDataModel.AppendBlock(&root, &block) {
-		// 	// blockchainDataModel.removeUsedTransactions()
-		// }
 		rootLock.Unlock()
-		//break search
 	}
 }
 
