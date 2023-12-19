@@ -29,8 +29,8 @@ services:
       - 5000:5000
     networks:
       - crypto_net
-    # logging:
-    #   driver: "none"
+    logging:
+      driver: "none"
 
   amm_service:
     image: amm
@@ -59,6 +59,8 @@ services:
     build:
       context: ./oracle
       dockerfile: ./Dockerfile
+    depends_on:
+      - amm_service
     environment:
       - PYTHONUNBUFFERED=1
       - FLASK_ORACLE_PORT=5000
@@ -81,17 +83,23 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - amm_service
+      - oracle_service
     environment:
       - PYTHONUNBUFFERED=1
       - AMM_SERVER_ADDR=192.168.10.3
+      - ORA_SERVER_ADDR=192.168.10.4
+      - ORA_SERVER_PORT=5000
       - AMM_SERVER_PORT=5000
       - TRANSACTION_BROADCAST=239.192.168.255:5007
       - NODE_BROADCAST=239.192.168.255:5006
       - SIGNATURE_VERIFY_PORT=5005
+      - METRICS_FILE=_stats.csv
     networks:
       - crypto_net
-    ports:
-      - 5005:5005
+    volumes:
+    - ./node:/usr/src/node
+    # ports:
+    #   - 5005:5005
     cpus: 0.2
     mem_limit: 128MB
 
@@ -109,7 +117,10 @@ services:
       - TRANSACTION_BROADCAST=239.192.168.255:5007
       - NODE_BROADCAST=239.192.168.255:5006
       - SIGNATURE_VERIFY_PORT=5005
+      - AMM_SERVER_ADDR=192.168.10.3
     networks:
       - crypto_net
     volumes:
       - ./miner:/usr/src/miner
+    # logging:
+    #   driver: "none"

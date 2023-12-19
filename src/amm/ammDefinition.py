@@ -1,11 +1,12 @@
 import json, math, hashlib, csv, binascii
+from locale import currency
 from datetime import datetime
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from blockchainAdapter import BlockchainOrganizer
 
 logFile = "log.csv"
-fieldnames = ['BTCamount', 'ETHamount', 'BTCvETHrate']
+fieldnames = ['ETH_amount', 'XAUt_amount', 'MKR_amount']
 
 class AmmClass:
 
@@ -206,7 +207,7 @@ class AmmClass:
             ls = self.getCurrentAmounts()
             rates = self.getRates()
 
-            data = {fieldnames[0]: ls["BTC"], fieldnames[1]:ls["ETH"], fieldnames[2]: rates["BTC"]["ETH"]}  # Replace with your data
+            data = {fieldnames[0]: ls["ETH"], fieldnames[1]:ls["XAUt"], fieldnames[2]: ls["MKR"]}  # Replace with your data
             writer.writerow(data)
             csvfile.close()
 

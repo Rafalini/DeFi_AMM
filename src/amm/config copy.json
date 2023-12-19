@@ -1,5 +1,12 @@
 {
     "currencies": [
+        // {
+        //     "name": "bitcoin",
+        //     "short": "BTC",
+        //     "amount": 3000,
+        //     "minimal_part": 0.001,
+        //     "id": 1
+        // },
         {
             "name": "etherium",
             "short": "ETH",

@@ -15,12 +15,12 @@ checkpoint_path = "./weights"
 
 print("Initialization of prediction model...")
 
-model = Sequential()
-model.add(LSTM(50, return_sequences = True, input_shape=(50, 1)))
-model.add(LSTM(64, return_sequences = False))
-model.add(Dense(1, activation='linear'))
-model.compile(loss='mse', optimizer='rmsprop')
-model.load_weights(checkpoint_path)
+# model = Sequential()
+# model.add(LSTM(50, return_sequences = True, input_shape=(50, 1)))
+# model.add(LSTM(64, return_sequences = False))
+# model.add(Dense(1, activation='linear'))
+# model.compile(loss='mse', optimizer='rmsprop')
+# model.load_weights(checkpoint_path)
 
 print("Initialization done.")
 
@@ -29,140 +29,21 @@ port = int(os.getenv("AMM_SERVER_PORT"))
 
 ammUrl = "http://"+addr+":"+str(port)
 
-uniswapApiURL = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
-sushiswApiURL = "https://api.thegraph.com/subgraphs/name/sushiswap/exchange"
-balanceApiURL = "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer"
-aaveApiURL = "https://api.thegraph.com/subgraphs/name/aave/protocol-multy-raw"
+def getCurrencies():
+  url1 = ammUrl+"/get-currencies"
+  ids = ""
+  try:
+    response1 = requests.get(url1)
+    for entry in response1["currencies"]:
+       ids += entry["id"]+","
 
-pricesTable = []
-
-uniswapQueryBody = """
-{
-  pairs{
-    id
-    token0Price
-    token0 {
-      name
-      symbol
-    }
-    token1 {
-      name
-      symbol
-    }
-    token1Price
-  }
-}
-"""
-# in $ by default
-balancerQueryBody = """
-{
-  tokenPrices{
-    name
-    symbol
-    price
-    poolLiquidity
-  }
-}
-"""
-
-
-# def getEthPrice():
-#   url1 = 'https://api.coingecko.com/api/v3/simple/price'
-#   url2 = 'https://api.binance.com/api/v3/ticker/price'
-#   url3 = 'https://api.binance.com/api/v3/avgPrice'
-
-#   params1 = {'ids': 'weth', 'vs_currencies': 'usd'}
-#   params2 = {'symbol': 'ETHUSDT'}
-#   try:
-#     response1 = requests.get(url1, params=params1)
-#     response2 = requests.get(url2, params=params2)
-#     response3 = requests.get(url3, params=params2)
-#   except Exception:
-#     pass
-#   weth_price = 0
-
-#   if response1.status_code == 200:
-#       data = response1.json()
-#       weth_price += float(data['weth']['usd'])
-
-#   if response1.status_code == 200:
-#       data = response2.json()
-#       weth_price += float(data['price'])
-
-#   if response3.status_code == 200:
-#     data = response3.json()
-#     weth_price += float(data['price'])
+  except Exception:
+    pass
   
-#   return weth_price / 3
+  return ids
 
-
-# uniswapHistory = {}
-# balancerHistory = {}
-# uniformHistory = {}
-
-# def getUniswapTokens(url, body):
-#     response = requests.post(url=url, json={"query": body})
-#     responseData = []
-#     if response.status_code == 200:
-#         data = json.loads(response.content.decode('utf8'))
-#         if "errors" not in data:
-#             responseData = data["data"]["pairs"]
-#     else:
-#         print(response.reason)
-#     return responseData
-
-# def getBalancerTokens(url, body):
-#     response = requests.post(url=url, json={"query": body})
-#     responseData = []
-#     if response.status_code == 200:
-#         data = json.loads(response.content.decode('utf8'))
-#         if "errors" not in data:
-#             responseData = data["data"]["tokenPrices"]
-#     else:
-#         print(response.reason)
-#     return responseData
-
-# def addUniswapHistoryEntry(data):
-#     ethPrice = getEthPrice()
-#     for entry in data:
-#         if entry["id"] not in uniswapHistory:
-#           uniswapHistory[entry["id"]] = []
-#         if entry["token0"]["symbol"] not in uniformHistory:
-#           uniformHistory[entry["token0"]["symbol"]] = []
-#         valueEntry = {}
-#         uniformEntry = {}
-#         valueEntry["dateTime"] = datetime.now().strftime("%H:%M:%S")
-#         valueEntry["token0name"] = entry["token0"]["symbol"]
-#         valueEntry["token0value"] = entry["token0Price"]
-#         valueEntry["token1name"] = entry["token1"]["symbol"]
-#         valueEntry["token1value"] = entry["token1Price"]
-#         uniswapHistory[entry["id"]].append(valueEntry)
-
-#         if valueEntry["token1name"] == "WETH":
-#           uniformEntry["dateTime"] = datetime.now().strftime("%H:%M:%S")
-#           uniformEntry["price"] = float(valueEntry["token0value"]) * ethPrice
-#           uniformHistory[entry["token0"]["symbol"]].append(uniformEntry)
-
-
-# def addBalancerHistoryEntry(data):
-#     for entry in data:
-#         if entry["symbol"] not in balancerHistory:
-#           balancerHistory[entry["symbol"]] = []
-
-#         if entry["symbol"] not in uniformHistory:
-#           uniformHistory[entry["symbol"]] = []
-
-#         valueEntry = {}
-#         uniformEntry = {}
-#         valueEntry["dateTime"] = datetime.now().strftime("%H:%M:%S")
-#         valueEntry["price"] = entry["price"]
-#         valueEntry["poolLiquidity"] = entry["poolLiquidity"]
-
-#         uniformEntry["dateTime"] = datetime.now().strftime("%H:%M:%S")
-#         uniformEntry["price"] = float(entry["price"])
-
-#         balancerHistory[entry["symbol"]].append(valueEntry)
-#         uniformHistory[entry["symbol"]].append(uniformEntry)
+currencyIds = getCurrencies()
+print(currencyIds)
 
 def getPricesAndAmounts():
     API_KEY = os.getenv("APIKEY")
@@ -171,7 +52,7 @@ def getPricesAndAmounts():
 
 
     parameters = {
-        'id': '1,1027,1518,5176',
+        'id': '1027,1518,5176',
         # 'limit': 5000
     }
 
@@ -184,7 +65,7 @@ def getPricesAndAmounts():
     data = response.json()
     usdPrices = []
     
-    usdPrices.append({"symbol" : data["data"]["1"]["symbol"], "usdprice" : data["data"]["1"]["quote"]["USD"]["price"] })
+    # usdPrices.append({"symbol" : data["data"]["1"]["symbol"], "usdprice" : data["data"]["1"]["quote"]["USD"]["price"] })
     usdPrices.append({"symbol" : data["data"]["1027"]["symbol"], "usdprice" :  data["data"]["1027"]["quote"]["USD"]["price"] })
     usdPrices.append({"symbol" : data["data"]["1518"]["symbol"], "usdprice" :  data["data"]["1518"]["quote"]["USD"]["price"] })
     usdPrices.append({"symbol" : data["data"]["5176"]["symbol"], "usdprice" :  data["data"]["5176"]["quote"]["USD"]["price"] })
@@ -213,7 +94,7 @@ def getCurrencies():
     return Response(json.dumps(pricesTable), status=200, mimetype='application/json')
 
 # @app.route("/")
-# @app.route("/get-symbols")
+@app.route("/get-prices")
 def getSymbols():
   return Response(json.dumps(pricesTable), status=200, mimetype='application/json')
 

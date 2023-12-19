@@ -3,7 +3,7 @@ class BlockchainOrganizer:
             self.blockchain = []
             self.awaitingBlocks = {}
             self.ageLimit = 5
-            self.trustThreshold = 0
+            self.trustThreshold = self.ageLimit - 3
 
         def addBlock(self, block):            
             self.awaitingBlocks[block['Hash']] = {"block" : block, "prevoius" : block["PreviousHash"], "refNum": 0, "age": 0}

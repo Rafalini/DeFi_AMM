@@ -28,6 +28,7 @@ var (
 	metricsFile                  string
 	blockChainFile               string
 	localAddr                    string
+	ammAdress                    string
 	sigVerifyPort                string
 	transactionHandlingMulticast string
 	blockHandlingMulticast       string
@@ -42,7 +43,7 @@ var (
 const (
 	BlockType       string = "block"
 	TransactionType        = "transaction"
-	blockSize              = 1
+	blockSize              = 3
 )
 
 func setLocalVariables() {
@@ -60,6 +61,7 @@ func setLocalVariables() {
 	sigVerifyPort = os.Getenv("SIGNATURE_VERIFY_PORT")
 	transactionHandlingMulticast = os.Getenv("TRANSACTION_BROADCAST")
 	blockHandlingMulticast = os.Getenv("NODE_BROADCAST")
+	ammAdress = os.Getenv("AMM_SERVER_ADDR")
 	root = *blockchainDataModel.NewRoot()
 }
 
@@ -129,8 +131,8 @@ func searchHash() {
 	rootLock.Unlock()
 
 	broadcastNode(block)
-	n := 1 + rand.Intn(4)
-	time.Sleep(time.Duration(n) * time.Second)
+	// n := 1 + rand.Intn(4)
+	// time.Sleep(time.Duration(n) * time.Second)
 }
 
 func broadcastNode(node blockchainDataModel.Block) {
@@ -203,7 +205,7 @@ func handleTransactions() {
 }
 
 func validateSignature(transaction blockchainDataModel.Transaction) bool {
-	if transaction.Sender == "192.168.10.3" {
+	if transaction.Sender == ammAdress {
 		return true
 	}
 	urlStr := "http://" + transaction.Sender + ":" + sigVerifyPort + "/get-public-key"
