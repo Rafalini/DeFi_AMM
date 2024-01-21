@@ -119,26 +119,7 @@
             type: 'line',
             data: {
                 labels: Array(250).fill("00:00:00"),
-                // datasets: [
-                //     {
-                //         label: "BTC",
-                //         backgroundColor: 'rgb(255, 0, 85)',
-                //         borderColor: 'rgb(255, 0, 85)',
-                //         data: Array(250).fill(null),
-                //         fill: false,
-                //         tension: 0.1,
-                //         pointRadius: 0
-                //     },
-                //     {
-                //         label: "ETH",
-                //         backgroundColor: 'rgb(0, 0, 255)',
-                //         borderColor: 'rgb(0, 0, 255)',
-                //         data: Array(250).fill(null),
-                //         fill: false,
-                //         tension: 0.1,
-                //         pointRadius: 0
-                //     }
-                // ],
+                datasets: []
             },
             options: {
                 responsive: true,
@@ -171,7 +152,7 @@
             type: 'line',
             data: {
                 labels: Array(250).fill("00:00:00"),
-                datasets: [],
+                datasets: []
             },
             options: {
                 legend: {
@@ -212,16 +193,18 @@
         const source = new EventSource("/chart-data");
 
         source.onmessage = function (event) {
+            var colors = []
             const data = JSON.parse(event.data);
-            data.prices.forEach(priceEntry => {
+            data.prices.forEach((priceEntry, index) => {
                 const datasetIndex = priceConfig.data.datasets.findIndex(object => object.label === priceEntry.symbol);
                 if (datasetIndex === -1) {
                     // 273
+                    colors.push(randomColor())
                     priceConfig.data.datasets.push(
                         {
                             label: priceEntry.symbol,
                             data: Array(250).fill(null),
-                            borderColor: randomColor(),
+                            borderColor: colors[index],
                             backgroundColor: 'rgb(255, 0, 85)',
                             fill: false,
                             tension: 0.1,
@@ -234,7 +217,7 @@
                 }
             })
 
-            data.amounts.forEach((amountEntry) => {
+            data.amounts.forEach((amountEntry, index) => {
                 // console.log(amountEntry)
                 const datasetIndex = amountConfig.data.datasets.findIndex(object => object.label === amountEntry.symbol);
                 if (datasetIndex === -1) {
@@ -242,7 +225,7 @@
                         {
                             label: amountEntry.symbol,
                             data: Array(250).fill(null),
-                            borderColor: randomColor(),
+                            borderColor: colors[index],
                             backgroundColor: 'rgb(255, 0, 85)',
                             fill: false,
                             tension: 0.1,

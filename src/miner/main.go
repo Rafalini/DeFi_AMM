@@ -23,6 +23,8 @@ import (
 )
 
 var (
+	logFilePrefix                string = "log/"
+	blockchainFilePrefix         string = "blockchain/"
 	lastBlock                    blockchainDataModel.Block
 	miner                        string
 	metricsFile                  string
@@ -55,9 +57,10 @@ func setLocalVariables() {
 
 	localAddr = conn.LocalAddr().(*net.UDPAddr).String()
 	miner, _ = os.Hostname()
-	os.Mkdir("logs", os.ModePerm)
-	metricsFile = "logs/" + strings.Split(localAddr, ":")[0] + os.Getenv("METRICS_FILE")
-	blockChainFile = "logs/" + strings.Split(localAddr, ":")[0] + os.Getenv("BLOCK_CHAIN_FILE")
+	os.Mkdir(logFilePrefix, os.ModePerm)
+	os.Mkdir(blockchainFilePrefix, os.ModePerm)
+	metricsFile = blockchainFilePrefix + strings.Split(localAddr, ":")[0] + os.Getenv("METRICS_FILE")
+	blockChainFile = blockchainFilePrefix + strings.Split(localAddr, ":")[0] + os.Getenv("BLOCK_CHAIN_FILE")
 	sigVerifyPort = os.Getenv("SIGNATURE_VERIFY_PORT")
 	transactionHandlingMulticast = os.Getenv("TRANSACTION_BROADCAST")
 	blockHandlingMulticast = os.Getenv("NODE_BROADCAST")

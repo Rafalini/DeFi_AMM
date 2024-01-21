@@ -1,12 +1,13 @@
 import json, math, hashlib, csv, binascii
 from locale import currency
 from datetime import datetime
+import threading, time
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from blockchainAdapter import BlockchainOrganizer
 
-logFile = "log.csv"
-fieldnames = ['ETH_amount', 'XAUt_amount', 'MKR_amount']
+logFile = "log/amm_log.csv"
+fieldnames = ['time','ETH_amount', 'XAUt_amount', 'MKR_amount']
 
 class AmmClass:
 
@@ -37,50 +38,53 @@ class AmmClass:
         self.transactions = []
         self.pendingTransactions = []
         self.transactionCacheLimit = 8
+
         f = open(logFile, "w")
-        f.write("BTCamount,ETHamount,BTCvETHrate")
+        f.write(','.join(fieldnames))
+        f.write('\n')
         f.close()
 
         for entry in self.config["currencies"]:
             self.currencies[entry["short"]] = {"amount":entry["amount"], "minimal_part": entry["minimal_part"], "volume": 0}
 
         self.blockchain = BlockchainOrganizer()
+        download_thread = threading.Thread(target=self.periodicSave, name="updater")
+        download_thread.start()
 
     def getCurrencies(self):
         return self.currencies
     
-    def getAmountsDeprecated(self):
-        self.saveStep()    
-        amounts = {}
+    # def getAmountsDeprecated(self):
+    #     self.saveStep()    
+    #     amounts = {}
 
-        btcSum, ethSum = 0,0
-        n = 30
-        if len(self.pendingTransactions)>n:
-            for transaction in self.pendingTransactions[-n:]:
-                if transaction["sender"] == "0xAMM":
-                    if transaction["token"] == "BTC":
-                        btcSum -= transaction["amount"]
-                    if transaction["token"] == "ETH":
-                        ethSum -= transaction["amount"] 
-                if transaction["reciever"] == "0xAMM":
-                    if transaction["token"] == "BTC":
-                        btcSum += transaction["amount"]
-                    if transaction["token"] == "ETH":
-                        ethSum += transaction["amount"] 
+    #     btcSum, ethSum = 0,0
+    #     n = 30
+    #     if len(self.pendingTransactions)>n:
+    #         for transaction in self.pendingTransactions[-n:]:
+    #             if transaction["sender"] == "0xAMM":
+    #                 if transaction["token"] == "BTC":
+    #                     btcSum -= transaction["amount"]
+    #                 if transaction["token"] == "ETH":
+    #                     ethSum -= transaction["amount"] 
+    #             if transaction["reciever"] == "0xAMM":
+    #                 if transaction["token"] == "BTC":
+    #                     btcSum += transaction["amount"]
+    #                 if transaction["token"] == "ETH":
+    #                     ethSum += transaction["amount"] 
 
-        for currency in self.currencies:
-            if currency == "BTC":
-                amounts[currency] = self.currencies[currency]["amount"] - btcSum
-            if currency == "ETH":
-                amounts[currency] = self.currencies[currency]["amount"] - ethSum
-        return amounts
+    #     for currency in self.currencies:
+    #         if currency == "BTC":
+    #             amounts[currency] = self.currencies[currency]["amount"] - btcSum
+    #         if currency == "ETH":
+    #             amounts[currency] = self.currencies[currency]["amount"] - ethSum
+    #     return amounts
     
     def getAmounts(self):
-        self.saveStep()    
         amounts = []
 
         for currency in self.currencies:
-            amounts.append({"symbol":currency,"amount":self.currencies[currency]["amount"]})
+            amounts.append({"symbol":currency,"amount":self.currencies[currency]["amount"]})    
         return amounts
     
     def requestedByConstantProduct(self, amount, token, exchangeToken):
@@ -132,30 +136,35 @@ class AmmClass:
         # requested = self.requestedByConstantProduct(request, self.const_product_k)
         requested = self.requestedByConstantProduct(amount, token, exchangeToken)
 
-        print("Exchange: "+token+" for "+exchangeToken+" ::: "+str(amount)+" for "+str(requested))
+        # print("Exchange: "+token+" for "+exchangeToken+" ::: "+str(amount)+" for "+str(requested))
 
         returnTransaction = {}
         returnTransaction["TimeStamp"] = datetime.now().isoformat('T')
         returnTransaction["Sender"] = request["Reciever"]
         returnTransaction["Reciever"] = request["Sender"]
+        if amount != 0:
+            newRate = requested / amount
+            if "Metadata" in request and newRate / exchangeRate <= maxSlippage:
+                #perform
+                print("slippage ok: "+str(newRate / exchangeRate))
+                self.currencies[token]["amount"] += amount
+                self.currencies[token]["volume"] += amount
+                self.currencies[exchangeToken]["amount"] -= requested
+                self.currencies[exchangeToken]["volume"] += requested
 
-        newRate = requested / amount
-        if "Metadata" in request and newRate / exchangeRate <= maxSlippage:
-            #perform
-            self.currencies[token]["amount"] += amount
-            self.currencies[token]["volume"] += amount
-            self.currencies[exchangeToken]["amount"] -= requested
-            self.currencies[exchangeToken]["volume"] += requested
+                self.transactions.insert(0, {"peer": request["Sender"], "from": token, "to": exchangeToken, "amountFrom": amount, "amountTo": requested})
 
-            self.transactions.insert(0, {"peer": request["Sender"], "from": token, "to": exchangeToken, "amountFrom": amount, "amountTo": requested})
-
-            returnTransaction["Amount"] = str(requested)
-            returnTransaction["Token"] = exchangeToken
+                returnTransaction["Amount"] = str(requested)
+                returnTransaction["Token"] = exchangeToken
+            else:
+                print("slippage to low, rejected: "+str(newRate / exchangeRate))
+                #reject
+                returnTransaction["Amount"] = str(amount)
+                returnTransaction["Token"] = token
         else:
-            #reject
             returnTransaction["Amount"] = str(amount)
             returnTransaction["Token"] = token
-
+            
         transactionHash = hashlib.sha256(str(returnTransaction).encode('UTF-8')).digest()
         returnTransaction["TransactionHash"] = binascii.hexlify(transactionHash).decode('utf-8')
         signature = self.private_key.sign(
@@ -163,7 +172,7 @@ class AmmClass:
             padding.PKCS1v15(),
             hashes.SHA256())
         returnTransaction["SenderSignature"] = binascii.hexlify(signature).decode('utf-8')
-        print(self.currencies)
+        # print(self.currencies)
         return returnTransaction
 
 
@@ -197,19 +206,19 @@ class AmmClass:
             amounts[currency] = self.currencies[currency]["amount"]
         return amounts
     
-    def saveStep(self):
-        with open(logFile, 'a', newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    def saveStep(self, startTime):
+        f = open(logFile, "a")
+        ls = self.getCurrentAmounts()
+        data = [str(int((time.time() - startTime) * 1000)), str(ls["ETH"]), str(ls["XAUt"]), str(ls["MKR"])]
+        f.write(','.join(data))
+        f.write('\n')
+        f.close()
 
-            if csvfile.tell() == 0:
-                writer.writeheader()
-
-            ls = self.getCurrentAmounts()
-            rates = self.getRates()
-
-            data = {fieldnames[0]: ls["ETH"], fieldnames[1]:ls["XAUt"], fieldnames[2]: ls["MKR"]}  # Replace with your data
-            writer.writerow(data)
-            csvfile.close()
+    def periodicSave(self):
+        startTime = time.time()
+        while (time.time() - startTime) < 60:
+            self.saveStep(startTime)
+            time.sleep(1)
 
     def addBlock(self, block):
         self.blockchain.addBlock(block)

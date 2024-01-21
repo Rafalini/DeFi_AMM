@@ -23,7 +23,11 @@ import (
 )
 
 var (
-	// counter                      int
+	duration                             = 60 * time.Second
+	logFilePrefix                string  = "log/"
+	keyChainFilePrefix           string  = "key/"
+	pendingTrans                 int     = 0
+	pendingValue                 float64 = 0
 	balanceMap                   map[string]float64
 	sigVerifyPort                string
 	ammAdress                    string
@@ -36,6 +40,7 @@ var (
 	logFile                      string
 	privateKey                   *rsa.PrivateKey
 	publicKey                    rsa.PublicKey
+	startTime                    time.Time
 )
 
 type RatesResponse struct {
@@ -47,28 +52,40 @@ type RatesResponse struct {
 }
 
 func setLocalVariables() {
+	startTime = time.Now()
 	balanceMap = make(map[string]float64)
 	// balanceMap["BTC"] = 3000
-	balanceMap["ETH"] = 3000
-	balanceMap["XAUt"] = 3000
-	balanceMap["MKR"] = 3000
+	balanceMap["ETH"] = 300
+	balanceMap["XAUt"] = 300
+	balanceMap["MKR"] = 300
 
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
-
+	os.Mkdir(logFilePrefix, os.ModePerm)
+	os.Mkdir(keyChainFilePrefix, os.ModePerm)
 	localAddr = strings.Split(conn.LocalAddr().(*net.UDPAddr).String(), ":")[0]
 	transactionBroadcastAddr = os.Getenv("TRANSACTION_BROADCAST")
 	ammAdress = os.Getenv("AMM_SERVER_ADDR")
 	ammPort = os.Getenv("AMM_SERVER_PORT")
 	oracleAdress = os.Getenv("ORA_SERVER_ADDR") + ":" + os.Getenv("ORA_SERVER_PORT")
-	privateKey, publicKey = blockchainDataModel.GenerateKeyPairAndReturn("log/keys/" + localAddr)
+	privateKey, publicKey = blockchainDataModel.GenerateKeyPairAndReturn(keyChainFilePrefix + localAddr)
 	sigVerifyPort = os.Getenv("SIGNATURE_VERIFY_PORT")
 	transactionHandlingMulticast = os.Getenv("TRANSACTION_BROADCAST")
-	logFile = "log/" + strings.Split(localAddr, ":")[0] + os.Getenv("METRICS_FILE")
-	metrics.PrepareLog(logFile)
+	logFile = logFilePrefix + strings.Split(localAddr, ":")[0] + os.Getenv("METRICS_FILE")
+	metrics.PrepareLog(balanceMap, getPrices(), logFile)
+}
+
+func getCurrentVal() float64 {
+	prices := getPrices()
+	sum := 0.0
+	for key := range balanceMap {
+		sum += balanceMap[key] * prices[key]
+	}
+	return sum
+	// return sum + pendingValue
 }
 
 func getPrices() map[string]float64 {
@@ -148,7 +165,6 @@ func getRates() map[string]map[string]float64 {
 		fmt.Println("Error unmarshalling JSON:", err)
 		return nil
 	}
-	fmt.Println(data)
 
 	ratesMap := make(map[string]map[string]float64)
 	// ratesMap["BTC"] = data.BTC
@@ -181,11 +197,15 @@ func handleTransactions() {
 		json.Unmarshal(buffer[:n], &transaction)
 
 		if !hasTransactionBeenUsed(transaction.TransactionHash) && transaction.Reciever == localAddr {
-			fmt.Printf("Recieved transaction: " + transaction.Token + " " + transaction.Amount)
+			// fmt.Printf("Recieved transaction: " + transaction.Token + " " + transaction.Amount)
 			val, _ := strconv.ParseFloat(transaction.Amount, 64)
 			balanceMap[transaction.Token] += val
+
+			priceMap := getPrices()
+			pendingValue -= val * priceMap[transaction.Token]
+
+			pendingTrans -= 1
 			recievedTransactionHashes = append(recievedTransactionHashes, transaction.TransactionHash)
-			metrics.UpdateLog(balanceMap, getPrices(), logFile)
 		}
 	}
 }
@@ -231,7 +251,7 @@ func calculateMaxGain() (string, string, float64) {
 	maxEchangeToken := ""
 	maxGain := 0.0
 
-	priceMap := getPrices() //key - value
+	priceMap := getPrices() // key - value
 	rateMap := getRates()   // key - key value
 
 	for token := range priceMap {
@@ -252,11 +272,13 @@ func calculateMaxGain() (string, string, float64) {
 	min := 1.0
 	max := balanceMap[maxToken] / 4
 	amount := min + rand.Float64()*(max-min)
+	pendingValue += amount * priceMap[maxToken] * rateMap[maxToken][maxEchangeToken]
 	return maxToken, maxEchangeToken, amount
 }
 
 func trade() {
-	for {
+	for time.Since(startTime) < duration {
+		// fmt.Printf("Current val: %.2f\n", getCurrentVal())
 		token, exchangeToken, amount := calculateMaxGain()
 		balanceMap[token] -= amount
 
@@ -268,7 +290,7 @@ func trade() {
 		newTransaction.Amount = fmt.Sprintf("%f", amount)
 		newTransaction.Token = token
 		newTransaction.Metadata.ExchangeToken = exchangeToken
-		newTransaction.Metadata.MaxSlippage = fmt.Sprintf("%f", 100000.0)
+		newTransaction.Metadata.MaxSlippage = fmt.Sprintf("%f", 100.5)
 		newTransaction.Metadata.ExchangeRate = fmt.Sprintf("%f", 1.0)
 
 		transactionbytes, _ := json.Marshal(newTransaction)
@@ -279,7 +301,39 @@ func trade() {
 		newTransaction.SenderSignature = hex.EncodeToString(sig)
 
 		broadcastTransaction(newTransaction)
-		time.Sleep(500 * time.Millisecond)
+		pendingTrans += 1
+
+		time.Sleep(time.Duration(pendingTrans) * 500 * time.Millisecond)
+	}
+	finalizeTransactions()
+	time.Sleep(10 * time.Second)
+}
+
+func finalizeTransactions() {
+	for i := 0; i < 15; i++ {
+		token, exchangeToken, _ := calculateMaxGain()
+		var newTransaction = blockchainDataModel.Transaction{}
+		newTransaction.Sender = localAddr
+		newTransaction.Reciever = ammAdress
+		var timeStamp = time.Now()
+		newTransaction.TimeStamp = timeStamp.Format("2006-01-02T15:04:05.999999999Z07:00")
+		newTransaction.Amount = fmt.Sprintf("%f", 0.00000001)
+		newTransaction.Token = token
+		newTransaction.Metadata.ExchangeToken = exchangeToken
+		newTransaction.Metadata.MaxSlippage = fmt.Sprintf("%f", 1.5)
+		newTransaction.Metadata.ExchangeRate = fmt.Sprintf("%f", 1.0)
+
+		transactionbytes, _ := json.Marshal(newTransaction)
+		transactionhash := blockchainDataModel.ReturnHash(transactionbytes)
+		newTransaction.TransactionHash = hex.EncodeToString(transactionhash)
+		sig, _ := rsa.SignPKCS1v15(crand.Reader, privateKey, crypto.SHA256, transactionhash)
+
+		newTransaction.SenderSignature = hex.EncodeToString(sig)
+
+		broadcastTransaction(newTransaction)
+		pendingTrans += 1
+
+		time.Sleep(time.Duration(pendingTrans) * 500 * time.Millisecond)
 	}
 }
 
@@ -318,10 +372,19 @@ func httpHandler() {
 	}
 }
 
+func periodicSave() {
+	for {
+		metrics.UpdateLog(startTime, getCurrentVal(), balanceMap, getPrices(), logFile)
+		time.Sleep(1 * time.Second)
+	}
+}
+
 func main() {
-	time.Sleep(2 * time.Second)
+	delay, _ := strconv.Atoi(os.Getenv("DELAY"))
+	time.Sleep(time.Duration(delay) * time.Second)
 	setLocalVariables()
 	go httpHandler() //public key
 	go handleTransactions()
+	go periodicSave()
 	trade()
 }

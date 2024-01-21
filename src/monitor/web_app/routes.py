@@ -43,7 +43,7 @@ def getCurrentAmounts():
                 data["amounts"] = amm.getAmounts()
                 data["rates"] = amm.getRates()
                 data["transactions"] = amm.getTransactions()
-                data["prices"] = requests.get(oracleUrl+'/get-values').json()
+                data["prices"] = requests.get(oracleUrl+'/get-prices').json()
             except Exception as e:
                 print(e)
 

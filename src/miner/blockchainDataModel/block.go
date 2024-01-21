@@ -58,7 +58,7 @@ func (n *TreeNode) SaveToFile(f *os.File, lvl int) {
 	if len(n.Block.Transactions) == 0 {
 		str = "root"
 	} else {
-		str = fmt.Sprintf("%#v", fmt.Sprintf("%x", n.Block.Hash))
+		str = NodeToString(n.Block)
 	}
 	f.WriteString(str + "\n")
 
@@ -66,6 +66,16 @@ func (n *TreeNode) SaveToFile(f *os.File, lvl int) {
 		f.WriteString(strings.Repeat(" ", lvl))
 		child.SaveToFile(f, lvl+2)
 	}
+}
+
+func NodeToString(block Block) string {
+	outstr := fmt.Sprintf("%#v", fmt.Sprintf("%x", block.Hash))
+
+	for i, s := range block.Transactions {
+		outstr += fmt.Sprintf("%d : %x", i, s)
+	}
+
+	return fmt.Sprintf("%#v", fmt.Sprintf("%x", block.Hash))
 }
 
 func NewRoot() *TreeNode {

@@ -9,6 +9,8 @@ transCnt = 0
 actBtc = initialBtc
 actEth = initialEth
 
+
+
 print("initial state:  BTC: "+str(initialBtc)+"  ETH: "+str(initialEth))
 
 
