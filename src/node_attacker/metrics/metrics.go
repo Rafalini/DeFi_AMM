@@ -14,7 +14,7 @@ func PrepareLog(balances map[string]float64, prices map[string]float64, fileName
 	writer := csv.NewWriter(file)
 	s0 := []string{"Timestamp"}
 	s1 := mapKeysToArray(balances)
-	s2 := mapKeysToArray(prices)
+	s2 := mapKeysToValueArray(prices)
 	s3 := []string{"USDvalue"}
 
 	s0 = append(s0, s1...)
@@ -32,6 +32,17 @@ func mapKeysToArray(m map[string]float64) []string {
 	// Iterate over the map and append keys to the slice
 	for key := range m {
 		keys = append(keys, key)
+	}
+
+	return keys
+}
+
+func mapKeysToValueArray(m map[string]float64) []string {
+	var keys []string
+
+	// Iterate over the map and append keys to the slice
+	for key := range m {
+		keys = append(keys, key+"_value")
 	}
 
 	return keys

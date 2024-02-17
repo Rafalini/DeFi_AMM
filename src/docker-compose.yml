@@ -20,11 +20,11 @@ services:
       - oracle_service
     environment:
     - PYTHONUNBUFFERED=1
-    - FLASK_SERVER_PORT=5000
-    - AMM_SERVER_ADDR=192.168.10.3
-    - AMM_SERVER_PORT=5000
-    - ORACLE_SERVER_ADDR=192.168.10.4
-    - ORACLE_SERVER_PORT=5000
+    - FLASK_SERVER_PORT=${FLASK_SERVER_PORT}
+    - AMM_SERVER_ADDR=${AMM_SERVER_ADDR}
+    - AMM_SERVER_PORT=${AMM_SERVER_PORT}
+    - ORACLE_SERVER_ADDR=${ORACLE_SERVER_ADDR}
+    - ORACLE_SERVER_PORT=${ORACLE_SERVER_PORT}
     ports:
       - 5000:5000
     networks:
@@ -40,11 +40,11 @@ services:
     depends_on:
       - oracle_service
     environment:
+    - DURATION=${DURATION}
     - PYTHONUNBUFFERED=1
-    - SERVER_PORT=5000
-    - TRANSACTION_BROADCAST=239.192.168.255:5007
-    - NODE_BROADCAST=239.192.168.255:5006
-    - AMM_SERVER_ADDR=192.168.10.3
+    - TRANSACTION_BROADCAST=${TRANSACTION_BROADCAST}
+    - NODE_BROADCAST=${NODE_BROADCAST}
+    - AMM_SERVER_ADDR=${AMM_SERVER_ADDR}
     ports:
       - 5001:5000
     networks:
@@ -52,8 +52,8 @@ services:
         ipv4_address: 192.168.10.3
     volumes:
       - ./output:/usr/src/app/log
-    logging:
-      driver: "none"
+    # logging:
+    #   driver: "none"
 
 
   oracle_service:
@@ -62,11 +62,11 @@ services:
       context: ./oracle
       dockerfile: ./Dockerfile
     environment:
+      - DURATION=${DURATION}
       - PYTHONUNBUFFERED=1
-      - FLASK_ORACLE_PORT=5000
-      - AMM_SERVER_ADDR=192.168.10.3
-      - AMM_SERVER_PORT=5000
-      - APIKEY=a97a2391-8600-4c3e-8dbf-046dd9d86214
+      - AMM_SERVER_ADDR=${AMM_SERVER_ADDR}
+      - AMM_SERVER_PORT=${AMM_SERVER_PORT}
+      - APIKEY=${APIKEY}
     ports:
       - 5002:5000
     networks:
@@ -74,8 +74,8 @@ services:
         ipv4_address: 192.168.10.4
     volumes:
       - ./output:/usr/src/app/log
-    logging:
-      driver: "none"
+    # logging:
+    #   driver: "none"
 
   
   node:
@@ -87,16 +87,17 @@ services:
       - amm_service
       - oracle_service
     environment:
-      - DELAY=4
+      - DURATION=${DURATION}
+      - DELAY=${DELAY}
       - PYTHONUNBUFFERED=1
-      - AMM_SERVER_ADDR=192.168.10.3
-      - ORA_SERVER_ADDR=192.168.10.4
-      - ORA_SERVER_PORT=5000
-      - AMM_SERVER_PORT=5000
-      - TRANSACTION_BROADCAST=239.192.168.255:5007
-      - NODE_BROADCAST=239.192.168.255:5006
-      - SIGNATURE_VERIFY_PORT=5005
-      - METRICS_FILE=_stats.csv
+      - AMM_SERVER_ADDR=${AMM_SERVER_ADDR}
+      - ORACLE_SERVER_ADDR=${ORACLE_SERVER_ADDR}
+      - ORACLE_SERVER_PORT=${ORACLE_SERVER_PORT}
+      - AMM_SERVER_PORT=${AMM_SERVER_PORT}
+      - TRANSACTION_BROADCAST=${TRANSACTION_BROADCAST}
+      - NODE_BROADCAST=${NODE_BROADCAST}
+      - SIGNATURE_VERIFY_PORT=${SIGNATURE_VERIFY_PORT}
+      - METRICS_FILE=${METRICS_FILE}
     networks:
       - crypto_net
     volumes:
@@ -115,16 +116,17 @@ services:
       - amm_service
       - oracle_service
     environment:
-      - DELAY=4
+      - DURATION=${DURATION}
+      - DELAY=${DELAY}
       - PYTHONUNBUFFERED=1
-      - AMM_SERVER_ADDR=192.168.10.3
-      - ORA_SERVER_ADDR=192.168.10.4
-      - ORA_SERVER_PORT=5000
-      - AMM_SERVER_PORT=5000
-      - TRANSACTION_BROADCAST=239.192.168.255:5007
-      - NODE_BROADCAST=239.192.168.255:5006
-      - SIGNATURE_VERIFY_PORT=5005
-      - METRICS_FILE=attacker_stats.csv
+      - AMM_SERVER_ADDR=${AMM_SERVER_ADDR}
+      - ORACLE_SERVER_ADDR=${ORACLE_SERVER_ADDR}
+      - ORACLE_SERVER_PORT=${ORACLE_SERVER_PORT}
+      - AMM_SERVER_PORT=${AMM_SERVER_PORT}
+      - TRANSACTION_BROADCAST=${TRANSACTION_BROADCAST}
+      - NODE_BROADCAST=${NODE_BROADCAST}
+      - SIGNATURE_VERIFY_PORT=${SIGNATURE_VERIFY_PORT}
+      - METRICS_FILE=attacker${METRICS_FILE}
     networks:
       - crypto_net
     volumes:
@@ -144,12 +146,12 @@ services:
       - amm_service
       - oracle_service
     environment:
-      - METRICS_FILE=_stats.json
-      - BLOCK_CHAIN_FILE=_chain.txt
-      - TRANSACTION_BROADCAST=239.192.168.255:5007
-      - NODE_BROADCAST=239.192.168.255:5006
-      - SIGNATURE_VERIFY_PORT=5005
-      - AMM_SERVER_ADDR=192.168.10.3
+      - MINER_METRICS_FILE=${MINER_METRICS_FILE}
+      - BLOCK_CHAIN_FILE=${BLOCK_CHAIN_FILE}
+      - TRANSACTION_BROADCAST=${TRANSACTION_BROADCAST}
+      - NODE_BROADCAST=${NODE_BROADCAST}
+      - SIGNATURE_VERIFY_PORT=${SIGNATURE_VERIFY_PORT}
+      - AMM_SERVER_ADDR=${AMM_SERVER_ADDR}
     networks:
       - crypto_net
     volumes:

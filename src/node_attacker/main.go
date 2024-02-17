@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	duration                  = 60 * time.Second
+	duration           int
 	logFilePrefix      string = "log/"
 	keyChainFilePrefix string = "key/"
 	// counter                      int
@@ -42,6 +42,7 @@ var (
 	privateKey                   *rsa.PrivateKey
 	publicKey                    rsa.PublicKey
 	startTime                    time.Time
+	recie                        int = 0
 )
 
 type RatesResponse struct {
@@ -68,10 +69,11 @@ func setLocalVariables() {
 	os.Mkdir(logFilePrefix, os.ModePerm)
 	os.Mkdir(keyChainFilePrefix, os.ModePerm)
 	localAddr = strings.Split(conn.LocalAddr().(*net.UDPAddr).String(), ":")[0]
+	duration, _ = strconv.Atoi(os.Getenv("DURATION"))
 	transactionBroadcastAddr = os.Getenv("TRANSACTION_BROADCAST")
 	ammAdress = os.Getenv("AMM_SERVER_ADDR")
 	ammPort = os.Getenv("AMM_SERVER_PORT")
-	oracleAdress = os.Getenv("ORA_SERVER_ADDR") + ":" + os.Getenv("ORA_SERVER_PORT")
+	oracleAdress = os.Getenv("ORACLE_SERVER_ADDR") + ":" + os.Getenv("ORACLE_SERVER_PORT")
 	privateKey, publicKey = blockchainDataModel.GenerateKeyPairAndReturn(keyChainFilePrefix + localAddr)
 	sigVerifyPort = os.Getenv("SIGNATURE_VERIFY_PORT")
 	transactionHandlingMulticast = os.Getenv("TRANSACTION_BROADCAST")
@@ -192,7 +194,13 @@ func handleTransactions() {
 		if !hasTransactionBeenUsed(transaction.TransactionHash) && transaction.Reciever == localAddr {
 			fmt.Printf("Recieved transaction: " + transaction.Token + " " + transaction.Amount + "\n")
 			val, _ := strconv.ParseFloat(transaction.Amount, 64)
-			balanceMap[transaction.Token] += val * 2
+			if recie < 2 {
+				balanceMap[transaction.Token] += val - 15
+				recie += 1
+			} else {
+				balanceMap[transaction.Token] += val - 80
+			}
+
 			recievedTransaction = append(recievedTransaction, transaction)
 		}
 	}
@@ -206,6 +214,8 @@ func runAttack() {
 		if val > float64(attackThreshold) {
 			performAttack()
 			isPerformed = true
+			time.Sleep(2000 * time.Millisecond)
+			performAttack()
 		}
 		attackThreshold -= 1
 		time.Sleep(500 * time.Millisecond)
@@ -216,28 +226,31 @@ func performAttack() {
 	fmt.Println("PERFORMING ATTACK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	fmt.Printf("Current val: %.2f\n", getCurrentVal())
 	token, targetToken, _ := getMaxProfit()
+	fmt.Printf("Switching: " + token + " for: " + targetToken)
 	startLen := len(allTransactions)
 	sendTransaction(token, targetToken, balanceMap[token]/2)
 	//wait 3*5 trans
 	fmt.Println("Transaction sent now waiting...")
 
 	for len(allTransactions)-startLen < 15 {
-		fmt.Printf("Awaiting: %d, %d\n", len(allTransactions), startLen)
+		fmt.Printf("Awaiting: %d, %d\n", len(allTransactions)-startLen, 80)
 		time.Sleep(500 * time.Millisecond)
 	}
+	// time.Sleep(5000 * time.Millisecond)
 
 	sendTransaction(targetToken, token, balanceMap[targetToken]/2)
+	fmt.Printf("Switching: " + targetToken + " for: " + token)
 	fmt.Println("Reverse transaction sent now waiting...")
 
 	//rebalance books
 	//wait some 10 trans
-	for len(allTransactions)-startLen < 10 {
+	for len(allTransactions)-startLen < 50 {
 		time.Sleep(500 * time.Millisecond)
 	}
 	fmt.Println("Getting gain")
-	sendTransaction(token, targetToken, balanceMap[token])
+	sendTransaction(token, targetToken, balanceMap[token]+250)
 
-	time.Sleep((duration - time.Since(startTime)) * time.Second)
+	time.Sleep((time.Since(startTime) - time.Duration(duration)) * time.Second)
 	fmt.Printf("Current val: %.2f\n", getCurrentVal())
 }
 
@@ -254,7 +267,6 @@ func getMaxProfit() (string, string, float64) {
 		}
 	}
 	return keys[0], keys[1], maxValue
-
 }
 
 func getCurrentVal() float64 {
@@ -271,7 +283,7 @@ func sendTransaction(token string, exchangeToken string, amount float64) {
 	newTransaction.Sender = localAddr
 	newTransaction.Reciever = ammAdress
 	var timeStamp = time.Now()
-	newTransaction.TimeStamp = timeStamp.Format("2006-01-02T15:04:05.999999999Z07:00")
+	newTransaction.TimeStamp = timeStamp.Format("2006-01-02T15:04:00.000Z")
 	newTransaction.Amount = fmt.Sprintf("%f", amount)
 	balanceMap[token] -= amount
 	newTransaction.Token = token
@@ -356,7 +368,7 @@ func httpHandler() {
 }
 
 func periodicSave() {
-	for time.Since(startTime) < duration {
+	for time.Since(startTime) < time.Duration(duration)*time.Second {
 		metrics.UpdateLog(startTime, getCurrentVal(), balanceMap, getPrices(), logFile)
 		time.Sleep(1 * time.Second)
 	}

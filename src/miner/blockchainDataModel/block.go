@@ -75,7 +75,7 @@ func NodeToString(block Block) string {
 		outstr += fmt.Sprintf("%d : %x", i, s)
 	}
 
-	return fmt.Sprintf("%#v", fmt.Sprintf("%x", block.Hash))
+	return outstr
 }
 
 func NewRoot() *TreeNode {

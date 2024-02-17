@@ -28,6 +28,9 @@ MULTICAST_TTL = 1
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, MULTICAST_TTL)
 
+def shutdownAmm(amm):
+    amm.stop()
+    reactor.stop()
 
 class BaseResource(Resource):
     isLeaf = True
@@ -106,14 +109,16 @@ class NodeMulticastListener(DatagramProtocol):
 
     def datagramReceived(self, data, addr):
         # Handle the incoming multicast UDP datagram here
-        # logger.info("Received Node UDP data: %d [b] from %s", len(data), addr)
+        logger.info("Received Node UDP data: %d [b] from %s", len(data), addr)
+        # print(data.decode('utf-8'))
         block = json.loads(data.decode('utf-8'))
         amm.addBlock(block)
         justValidatedTransactions = [x for x in amm.getValidTransactions() if x["Sender"] != ammAdrr]
 
         for trans in justValidatedTransactions:
             resulttransaction = amm.performTransaction(trans)
-            sock.sendto(bytes(json.dumps(resulttransaction), 'utf-8'), (TRANS_MCAST_ADRR, TRANS_MCAST_PORT))
+            if resulttransaction is not None:
+                sock.sendto(bytes(json.dumps(resulttransaction), 'utf-8'), (TRANS_MCAST_ADRR, TRANS_MCAST_PORT))
 
 
 class TransactionMulticastListener(DatagramProtocol):
@@ -133,5 +138,5 @@ tcp_endpoint = endpoints.TCP4ServerEndpoint(reactor, 5000)
 tcp_endpoint.listen(site)
 tcp_endpoint2 = endpoints.TCP4ServerEndpoint(reactor, 5005)
 tcp_endpoint2.listen(site)
-
+reactor.callLater(int(os.getenv("DURATION"))+5, shutdownAmm, amm)
 reactor.run()

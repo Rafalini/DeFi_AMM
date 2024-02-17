@@ -2,7 +2,7 @@ class BlockchainOrganizer:
         def __init__(self):
             self.blockchain = []
             self.awaitingBlocks = {}
-            self.ageLimit = 5
+            self.ageLimit = 8
             self.trustThreshold = self.ageLimit - 3
 
         def addBlock(self, block):            

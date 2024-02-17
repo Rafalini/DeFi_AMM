@@ -1,18 +1,20 @@
 import json, math, hashlib, csv, binascii
 from locale import currency
 from datetime import datetime
-import threading, time
+import threading, time, os
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from blockchainAdapter import BlockchainOrganizer
 
 logFile = "log/amm_log.csv"
-fieldnames = ['time','ETH_amount', 'XAUt_amount', 'MKR_amount']
+logTransFile = "log/amm_trans_log.csv"
+fieldnames = ['time_amm','ETH_amount', 'XAUt_amount', 'MKR_amount']
 
 class AmmClass:
 
     def __init__(self, filePath):
-
+        self.transactionLog = []
+        self.startTime = time.time()
         self.private_key = rsa.generate_private_key(
             public_exponent=65537,  # Commonly used value for the public exponent
             key_size=2048  # Size of the key in bits
@@ -93,16 +95,17 @@ class AmmClass:
 
         deimalRoundingDigits = abs(round(math.log10(self.currencies[token]["minimal_part"])))
         requested = self.currencies[exchangeToken]["amount"] - round(
-            constK / (amount + self.currencies[token]["amount"])
-            , deimalRoundingDigits)
-        return requested
+            constK / (amount + self.currencies[token]["amount"]), deimalRoundingDigits)
+        return requested + 0.15
     
-    # def requestedByConstantSum(self, amount, token, exchangeToken):
-    #     # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
-    #     deimalRoundingDigits = abs(round(math.log10(self.currencies[exchangeToken]["minimal_part"])))
-    #     requested = self.currencies[exchangeToken]["amount"] - round(
-    #         self.const_sum_k - (amount + self.currencies[token]["amount"]), deimalRoundingDigits)
-    #     return requested
+    def requestedByConstantSum(self, amount, token, exchangeToken):
+        # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
+        constK = self.currencies[exchangeToken]["amount"] + self.currencies[token]["amount"]
+        if constK - (amount + self.currencies[token]["amount"]) > 0:
+            requested = amount
+        else:
+            requested = self.currencies[token]["amount"]
+        return requested
 
     # def proportional(self, amount, token, exchangeToken):
     #     # minimal_part = 0.001 -> log10(minimal_part) = -3.0 -> round & abs -> 3 decimal numbers
@@ -116,25 +119,50 @@ class AmmClass:
         response = {}    
         response["time"] = datetime.now().strftime("%H:%M:%S")
         list = self.getCurrentAmounts()
-        # print(list)
+        print(list)
         for currency in list:
             rates = {}
             for referenceCurrency in list:
                 if referenceCurrency != currency:
                     rates[referenceCurrency] = list[referenceCurrency] / list[currency]
+                    # rates[referenceCurrency] = 1
             response[currency] = rates
         return response
     
+    def parse_timestamp(self, timestamp_str):
+        return datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+
+    def stop(self):
+        # sorted_timestamps = sorted(self.transactionLog, key=self.parse_timestamp)
+        # startTime = datetime.strptime(sorted_timestamps[-1], "%Y-%m-%dT%H:%M:%S.%fZ")
+        with open(logTransFile, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['ms_elapsed'])
+            
+            for timestamp in self.transactionLog:
+                # timestamp_datetime = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+                # milliseconds_elapsed = int((startTime - timestamp_datetime).total_seconds() * 1000)
+                writer.writerow([timestamp])
+
 
     def performTransaction(self, request):
+        # self.transactionLog.append(request["TimeStamp"])
+
+        time_difference = (time.time() - self.startTime) * 1000
+        self.transactionLog.append(time_difference)
+
+        # Convert the time difference to milliseconds
         amount = float(request["Amount"])
         token = request["Token"]
+        print("exchange: " + request["Token"]+" for "+ request["Metadata"]["ExchangeToken"]+"|")
         exchangeToken = request["Metadata"]["ExchangeToken"]
+        if token == "" or exchangeToken == "":
+            return None
         if "Metadata" in request:
             exchangeRate = float(request["Metadata"]["ExchangeRate"])
             maxSlippage = float(request["Metadata"]["MaxSlippage"])
-        # requested = self.requestedByConstantProduct(request, self.const_product_k)
         requested = self.requestedByConstantProduct(amount, token, exchangeToken)
+        # requested = self.requestedByConstantSum(amount, token, exchangeToken)
 
         # print("Exchange: "+token+" for "+exchangeToken+" ::: "+str(amount)+" for "+str(requested))
 
@@ -144,9 +172,9 @@ class AmmClass:
         returnTransaction["Reciever"] = request["Sender"]
         if amount != 0:
             newRate = requested / amount
-            if "Metadata" in request and newRate / exchangeRate <= maxSlippage:
+            if "Metadata" in request and abs( newRate / exchangeRate) <= maxSlippage and requested <= self.currencies[exchangeToken]["amount"]:
                 #perform
-                print("slippage ok: "+str(newRate / exchangeRate))
+                # print("slippage ok: "+str(abs(newRate - exchangeRate)))
                 self.currencies[token]["amount"] += amount
                 self.currencies[token]["volume"] += amount
                 self.currencies[exchangeToken]["amount"] -= requested
@@ -157,7 +185,7 @@ class AmmClass:
                 returnTransaction["Amount"] = str(requested)
                 returnTransaction["Token"] = exchangeToken
             else:
-                print("slippage to low, rejected: "+str(newRate / exchangeRate))
+                # print("slippage to low, rejected: "+str(abs(newRate / exchangeRate)))
                 #reject
                 returnTransaction["Amount"] = str(amount)
                 returnTransaction["Token"] = token
@@ -206,18 +234,17 @@ class AmmClass:
             amounts[currency] = self.currencies[currency]["amount"]
         return amounts
     
-    def saveStep(self, startTime):
+    def saveStep(self):
         f = open(logFile, "a")
         ls = self.getCurrentAmounts()
-        data = [str(int((time.time() - startTime) * 1000)), str(ls["ETH"]), str(ls["XAUt"]), str(ls["MKR"])]
+        data = [str(int((time.time() - self.startTime) * 1000)), str(ls["ETH"]), str(ls["XAUt"]), str(ls["MKR"])]
         f.write(','.join(data))
         f.write('\n')
         f.close()
 
     def periodicSave(self):
-        startTime = time.time()
-        while (time.time() - startTime) < 60:
-            self.saveStep(startTime)
+        while (time.time() - self.startTime) < int(os.getenv("DURATION")):
+            self.saveStep()
             time.sleep(1)
 
     def addBlock(self, block):
